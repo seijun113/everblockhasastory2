@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html" class="active">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Get In Touch</span>
+    <h1>We'd Love To Hear From You</h1>
+    <p>Questions about the shop, your story, or partnering with us — send a note and we'll get back to you.</p>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding-top:20px;">
+  <div class="container two-col">
+    <form class="form-card" onsubmit="event.preventDefault(); showToast('Thanks — we\'ll be in touch soon.');">
+      <div class="field">
+        <label for="c-name">Name</label>
+        <input type="text" id="c-name" required>
+      </div>
+      <div class="field">
+        <label for="c-email">Email</label>
+        <input type="email" id="c-email" required>
+      </div>
+      <div class="field">
+        <label for="c-topic">Topic</label>
+        <select id="c-topic">
+          <option>General question</option>
+          <option>Order / shipping</option>
+          <option>Story submission help</option>
+          <option>Press & partnerships</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="c-message">Message</label>
+        <textarea id="c-message" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+    </form>
+
+    <div>
+      <h2 style="font-size:1.5rem;">Other ways to reach us</h2>
+      <div class="feature-row">
+        <span class="feature-icon olive">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+        </span>
+        <div><strong>hello@everyblockhasastory.com</strong></div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon orange">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <div><strong>Community support:</strong> replies within 2 business days.</div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon gold">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-7.4 8-13a8 8 0 1 0-16 0c0 5.6 8 13 8 13z"/></svg>
+        </span>
+        <div><strong>Global team,</strong> working across time zones so every block gets heard.</div>
+      </div>
+      <div class="info-box">
+        Prefer to just tell your story? Head straight to <a href="share.html" style="color:var(--orange); font-weight:600;">Share Your Story</a> instead.
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:12px;">
+          <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+          <span class="logo-tag">HAS A STORY</span>
+        </div>
+        <p>A global platform for the stories that shape our blocks, our cities, and our countries.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="stories.html">Stories</a></li>
+          <li><a href="map.html">World Map</a></li>
+          <li><a href="share.html">Share Your Story</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="shop.html">The Collection</a></li>
+          <li><a href="shop.html">Every Block Tee</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+      <span>Made for every block, everywhere.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

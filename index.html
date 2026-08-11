@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Every Block Has a Story — Real Stories, Real Places, Real People</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Real Stories · Real Places · Real People</span>
+        <h1>Every Block Has A Story.<br>The World Deserves To Hear It.</h1>
+        <p class="lead">Every place has meaning. Every community has value. Every block has a story — and every shirt you wear carries a link back here to share yours.</p>
+        <div class="hero-actions">
+          <a href="share.html" class="btn btn-primary">Share Your Story</a>
+          <a href="map.html" class="btn btn-outline">Explore the Map</a>
+        </div>
+      </div>
+
+      <div class="hero-map">
+        <div class="worldmap-base"></div>
+        <div class="hero-tagline">Real Stories.<br>Real Places.<br>Real People.</div>
+
+        <!-- pins (real lat/long, equirectangular projection) -->
+        <a class="map-pin" href="story.html?id=s1" style="--pc:#7c8a5c; left:31.9%; top:30.1%;" title="New York, USA — The Corner That Raised Me"></a>
+        <a class="map-pin" href="story.html?id=s7" style="--pc:#c1552c; left:28.6%; top:29.6%;" title="Chicago, USA — Concrete and Community"></a>
+        <a class="map-pin" href="story.html?id=s6" style="--pc:#c99a44; left:48.1%; top:34.5%;" title="Marrakech, Morocco — Sunset Over the Souk"></a>
+        <a class="map-pin" href="story.html?id=s2" style="--pc:#c1552c; left:50.8%; top:46.8%;" title="Lagos, Nigeria — Market Days, Dreaming Bigger"></a>
+        <a class="map-pin" href="story.html?id=s5" style="--pc:#7c8a5c; left:67.9%; top:40.7%;" title="Mumbai, India — Where the Trains Slow Down"></a>
+        <a class="map-pin" href="story.html?id=s3" style="--pc:#c1552c; left:83.2%; top:32.9%;" title="Kyoto, Japan — Roots, Rituals, Remembered"></a>
+        <a class="map-pin" href="story.html?id=s4" style="--pc:#c99a44; left:31.5%; top:47%;" title="Medellín, Colombia — Colors of Resilience"></a>
+        <a class="map-pin" href="story.html?id=s8" style="--pc:#c1552c; left:79.7%; top:37.8%;" title="Taipei, Taiwan — The Alley of Lanterns"></a>
+        <span class="map-credit">Map data: cablop/simple-world-map-by-continents (CC BY-SA 3.0)</span>
+      </div>
+    </div>
+
+    <div class="hero-photo-strip">
+      <img src="https://picsum.photos/seed/blockstory-strip1/400/220" alt="Colorful hillside houses">
+      <img src="https://picsum.photos/seed/blockstory-strip2/400/220" alt="Street festival with flags">
+      <img src="https://picsum.photos/seed/blockstory-strip3/400/220" alt="Kids smiling in a village">
+      <img src="https://picsum.photos/seed/blockstory-strip4/400/220" alt="Neighborhood street scene">
+    </div>
+  </div>
+</section>
+
+<section class="section section-light">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow" style="color:#a8431f;">Stories From Around The World</span>
+        <h2 style="margin-top:8px;">From bustling cities to quiet villages</h2>
+        <p>Every story adds to our shared human experience.</p>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <a href="stories.html" class="btn btn-dark">Explore All Stories</a>
+        <button class="carousel-arrow" data-carousel-next aria-label="Next">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="story-grid" data-story-grid data-scrollable data-limit="4"></div>
+  </div>
+</section>
+
+<section class="section section-olive">
+  <div class="container two-col" style="align-items:center;">
+    <div>
+      <div class="speech-cluster">
+        <div class="globe-center">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+        </div>
+        <div class="bubble b1">Tu historia importa</div>
+        <div class="bubble b2">你的故事很重要</div>
+        <div class="bubble b3">Your story matters</div>
+        <div class="bubble b4">Votre histoire a de la valeur</div>
+      </div>
+    </div>
+    <div>
+      <h2>One World. Many Voices. <span style="color:var(--orange);">All Stories</span> Welcome.</h2>
+      <p>EveryBlockHasAStory.com is a global platform. Share and read stories in multiple languages, from every corner of the world.</p>
+      <a href="map.html" class="btn btn-outline">See Stories in Action</a>
+    </div>
+  </div>
+</section>
+
+<section class="section section-dark">
+  <div class="container shop-teaser">
+    <div>
+      <span class="eyebrow">Wear The Movement</span>
+      <h2 style="margin-top:8px;">Every Block Has A Story.</h2>
+      <p style="color:var(--cream-dim);">Rep your belief in community, culture, and the power of storytelling. Every shirt links back to this site so the wearer's story can join the map.</p>
+      <a href="shop.html" class="btn btn-outline">Shop the Collection</a>
+    </div>
+    <div class="shirt-frame">
+      <div class="shirt-photo-frame">
+        <img class="shirt-photo" src="shirt-photo-ai.png" alt="Every Block Has A Story t-shirt, full front view with tartan design panel">
+      </div>
+    </div>
+    <div>
+      <div class="feature-row">
+        <span class="feature-icon olive">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        </span>
+        <div><strong>Premium quality, comfortable fit</strong></div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon orange">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <div><strong>Designed to inspire conversation</strong></div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon gold">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        </span>
+        <div><strong>A portion supports community storytelling</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-cta">
+  <div class="container">
+    <div>
+      <h3 style="margin:0;">Your Block. Your Story. Our World.</h3>
+      <p style="margin:6px 0 0; color:var(--cream-dim);">Join a global community celebrating the places and people that shape us.</p>
+    </div>
+    <a href="share.html" class="btn btn-primary">Share Your Story Today
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:12px;">
+          <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+          <span class="logo-tag">HAS A STORY</span>
+        </div>
+        <p>A global platform for the stories that shape our blocks, our cities, and our countries.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="stories.html">Stories</a></li>
+          <li><a href="map.html">World Map</a></li>
+          <li><a href="share.html">Share Your Story</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="shop.html">The Collection</a></li>
+          <li><a href="shop.html">Every Block Tee</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+      <span>Made for every block, everywhere.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

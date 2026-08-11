@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Share Your Story — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="share.html" class="btn btn-primary active"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Add To The Map</span>
+    <h1>Tell The World About Your Block</h1>
+    <p>Create an account, verify your shirt, then post. A verified Every Block shirt code is required to share.</p>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding-top:20px;">
+  <div class="container two-col">
+    <div>
+      <div id="member-banner" class="info-box" style="display:none; align-items:center; justify-content:space-between; gap:12px;">
+        <span>✓ Signed in as <strong id="member-name"></strong> · Verified member</span>
+        <a href="#" id="switch-account" style="color:var(--orange); font-weight:600; white-space:nowrap;">Not you?</a>
+      </div>
+
+      <div id="account-gate" class="form-card">
+        <span class="eyebrow">Step 1 of 3</span>
+        <h2 style="margin-top:8px; font-size:1.4rem;">Create Your Account</h2>
+        <p style="color:var(--cream-dim);">An account is required before you can verify a shirt and post. This prototype recognizes your account on this browser only.</p>
+        <div class="field">
+          <label for="acct-name">Name</label>
+          <input type="text" id="acct-name" placeholder="First name or username">
+        </div>
+        <div class="field">
+          <label for="acct-email">Email</label>
+          <input type="email" id="acct-email" placeholder="you@example.com">
+        </div>
+        <button type="button" id="create-account-btn" class="btn btn-primary btn-block">Create Account</button>
+      </div>
+
+      <div id="unlock-gate" class="form-card" style="display:none;">
+        <span class="eyebrow">Step 2 of 3</span>
+        <h2 style="margin-top:8px; font-size:1.4rem;">Verify Your Shirt</h2>
+        <p style="color:var(--cream-dim);">Only shirt owners can post — every Every Block tee ships with a unique code on the inside neck tag. Enter it below to unlock the story form.</p>
+        <div class="field">
+          <label for="order-code">Shirt order or tag code</label>
+          <input type="text" id="order-code" placeholder="e.g. EBS-48291">
+          <div class="field-hint">Don't have a shirt yet? <a href="shop.html" style="color:var(--orange); font-weight:600;">Shop the collection</a> to get your code.</div>
+        </div>
+        <button type="button" id="unlock-btn" class="btn btn-primary btn-block">Unlock Story Form</button>
+      </div>
+
+    <form id="share-form" class="form-card" style="display:none;">
+      <span class="eyebrow">Step 3 of 3</span>
+      <h2 style="margin-top:8px; font-size:1.4rem;">Tell Your Story</h2>
+      <div class="field">
+        <label for="story-title">Story title</label>
+        <input type="text" id="story-title" placeholder="e.g. The Corner That Raised Me" required>
+      </div>
+
+      <div class="field">
+        <label for="video-file">Video</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="video-file" accept="video/*" style="display:none;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          <div class="dz-text">Drag & drop a video, or click to browse</div>
+        </div>
+        <video id="video-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" controls></video>
+        <div class="field-hint">MP4 or MOV, up to 2 minutes.</div>
+      </div>
+
+      <div class="field">
+        <label for="story-caption">Caption</label>
+        <textarea id="story-caption" placeholder="What makes your block special?" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="story-location">Location</label>
+        <input type="text" id="story-location" placeholder="City, Country" required>
+      </div>
+
+      <div class="field">
+        <label for="story-country">Country (for map filtering)</label>
+        <input type="text" id="story-country" placeholder="e.g. USA">
+      </div>
+
+      <div class="field">
+        <label for="story-author">Your name (or leave blank for Anonymous)</label>
+        <input type="text" id="story-author" placeholder="First name, initial — up to you">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Post My Story</button>
+      <div class="field-hint" style="text-align:center; margin-top:10px;">Verified members can post unlimited stories — no limit.</div>
+    </form>
+
+    <div id="post-success" class="form-card" style="display:none; text-align:center;">
+      <div class="feature-icon olive" style="margin:0 auto 14px; width:48px; height:48px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h2 style="font-size:1.4rem;">Your Story Is Live!</h2>
+      <p style="color:var(--cream-dim);">Thanks for adding your block to the map. <span id="post-count-line"></span></p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:18px;">
+        <button type="button" id="post-another-btn" class="btn btn-primary">Post Another Story</button>
+        <a href="stories.html" class="btn btn-outline">View All Stories</a>
+      </div>
+    </div>
+    </div>
+
+    <div>
+      <h2 style="font-size:1.5rem;">Guidelines</h2>
+      <div class="feature-row">
+        <span class="feature-icon olive">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        </span>
+        <div><strong>Keep it real.</strong> Personal stories, real people, real places.</div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon orange">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"/></svg>
+        </span>
+        <div><strong>Under 2 minutes.</strong> Short clips travel further.</div>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon gold">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-7.4 8-13a8 8 0 1 0-16 0c0 5.6 8 13 8 13z"/></svg>
+        </span>
+        <div><strong>Tag a location.</strong> This is what puts you on the world map.</div>
+      </div>
+
+      <div class="info-box">
+        <strong>Why the shirt code?</strong> Posting is a perk reserved for shirt owners — it's how we keep the map full of real people who've joined the movement. Find your code on the inside neck tag.
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:12px;">
+          <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+          <span class="logo-tag">HAS A STORY</span>
+        </div>
+        <p>A global platform for the stories that shape our blocks, our cities, and our countries.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="stories.html">Stories</a></li>
+          <li><a href="map.html">World Map</a></li>
+          <li><a href="share.html">Share Your Story</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="shop.html">The Collection</a></li>
+          <li><a href="shop.html">Every Block Tee</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+      <span>Made for every block, everywhere.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stories — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html" class="active">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">The Feed</span>
+    <h1>Stories From Every Block</h1>
+    <p>Videos and captions shared by our community — from bustling cities to quiet villages. Every story adds to our shared human experience.</p>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding-top:40px;">
+  <div class="container">
+    <div class="filter-bar">
+      <button class="chip active" data-filter="all">All Stories</button>
+      <button class="chip" data-filter="USA">USA</button>
+      <button class="chip" data-filter="Nigeria">Nigeria</button>
+      <button class="chip" data-filter="Japan">Japan</button>
+      <button class="chip" data-filter="Colombia">Colombia</button>
+      <button class="chip" data-filter="India">India</button>
+      <button class="chip" data-filter="Morocco">Morocco</button>
+      <button class="chip" data-filter="Taiwan">Taiwan</button>
+    </div>
+    <div class="story-grid" data-story-grid></div>
+  </div>
+</section>
+
+<div class="footer-cta">
+  <div class="container">
+    <div>
+      <h3 style="margin:0;">Don't see your block yet?</h3>
+      <p style="margin:6px 0 0; color:var(--cream-dim);">Add your story to the map in under two minutes.</p>
+    </div>
+    <a href="share.html" class="btn btn-primary">Share Your Story
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:12px;">
+          <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+          <span class="logo-tag">HAS A STORY</span>
+        </div>
+        <p>A global platform for the stories that shape our blocks, our cities, and our countries.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="stories.html">Stories</a></li>
+          <li><a href="map.html">World Map</a></li>
+          <li><a href="share.html">Share Your Story</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="shop.html">The Collection</a></li>
+          <li><a href="shop.html">Every Block Tee</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+      <span>Made for every block, everywhere.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
