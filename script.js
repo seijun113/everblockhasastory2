@@ -126,6 +126,7 @@ function videoToStoryShape(v) {
     author: v.author,
     hue: Math.floor(Math.random() * 360),
     videoUrl: v.iframeUrl || null,
+    thumbnailUrl: v.thumbnailUrl || null,
   };
 }
 
@@ -171,9 +172,12 @@ const API = {
 // ---------- Story card rendering ----------
 function storyCardHTML(s) {
   const initials = (s.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
+  const media = s.thumbnailUrl
+    ? `<div class="story-media-fallback" style="background-image:url('${escapeAttr(s.thumbnailUrl)}'); background-size:cover; background-position:center;"></div>`
+    : `<div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
   return `
   <a class="story-card" href="story.html?id=${encodeURIComponent(s.id)}" data-country="${escapeAttr(s.country || "")}">
-    <div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>
+    ${media}
     <span class="story-loc">${pinIcon()} ${escapeHtml(s.location || "")}</span>
     <span class="play-badge">${playIcon()}</span>
     <div class="story-body">
@@ -431,6 +435,9 @@ function initShareForm() {
   const fileInput = document.getElementById("video-file");
   const dropzone = document.getElementById("dropzone");
   const preview = document.getElementById("video-preview");
+  const thumbInput = document.getElementById("thumbnail-file");
+  const thumbDropzone = document.getElementById("thumb-dropzone");
+  const thumbPreview = document.getElementById("thumbnail-preview");
   const successPanel = document.getElementById("post-success");
   const postCountLine = document.getElementById("post-count-line");
   const postAnotherBtn = document.getElementById("post-another-btn");
@@ -442,6 +449,14 @@ function initShareForm() {
     dropzone.querySelector(".dz-text").textContent = "Drag & drop a video, or click to browse";
     preview.style.display = "none";
     preview.removeAttribute("src");
+    if (thumbDropzone) {
+      thumbDropzone.classList.remove("has-file");
+      thumbDropzone.querySelector(".dz-text").textContent = "Drag & drop an image, or click to browse";
+    }
+    if (thumbPreview) {
+      thumbPreview.style.display = "none";
+      thumbPreview.removeAttribute("src");
+    }
   }
 
   if (postAnotherBtn) {
@@ -473,6 +488,30 @@ function initShareForm() {
       const url = URL.createObjectURL(file);
       preview.src = url;
       preview.style.display = "block";
+    }
+  }
+
+  if (thumbDropzone && thumbInput) {
+    thumbDropzone.addEventListener("click", () => thumbInput.click());
+    thumbDropzone.addEventListener("dragover", (e) => { e.preventDefault(); thumbDropzone.classList.add("has-file"); });
+    thumbDropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) {
+        thumbInput.files = e.dataTransfer.files;
+        handleThumbFile(e.dataTransfer.files[0]);
+      }
+    });
+    thumbInput.addEventListener("change", () => {
+      if (thumbInput.files.length) handleThumbFile(thumbInput.files[0]);
+    });
+  }
+
+  function handleThumbFile(file) {
+    thumbDropzone.classList.add("has-file");
+    thumbDropzone.querySelector(".dz-text").textContent = `Selected: ${file.name}`;
+    if (file.type.startsWith("image/") && thumbPreview) {
+      thumbPreview.src = URL.createObjectURL(file);
+      thumbPreview.style.display = "block";
     }
   }
 
@@ -520,12 +559,27 @@ function initShareForm() {
       const uploadRes = await fetch(urlData.uploadURL, { method: "POST", body: uploadForm });
       if (!uploadRes.ok) throw new Error("Video upload failed — try a smaller file or a different format.");
 
+      // 2b. If a custom thumbnail was chosen, upload it too. If not, we
+      // simply don't send a thumbnailUrl — the backend defaults to a frame
+      // from 2 seconds into the video automatically.
+      let thumbnailUrl = null;
+      const thumbFile = thumbInput && thumbInput.files[0];
+      if (thumbFile) {
+        if (submitBtn) submitBtn.textContent = "Uploading thumbnail…";
+        const thumbForm = new FormData();
+        thumbForm.append("thumbnail", thumbFile);
+        const thumbRes = await apiFetch("/api/videos/thumbnail-upload", { method: "POST", body: thumbForm });
+        const thumbData = await thumbRes.json();
+        if (!thumbRes.ok) throw new Error(thumbData.error || "Couldn't upload thumbnail.");
+        thumbnailUrl = thumbData.thumbnailUrl;
+      }
+
       // 3. Save the story's details, linked to that uploaded video.
       if (submitBtn) submitBtn.textContent = "Posting…";
       const saveRes = await apiFetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cloudflareUid: urlData.uid, title, caption, location, country, author }),
+        body: JSON.stringify({ cloudflareUid: urlData.uid, title, caption, location, country, author, thumbnailUrl }),
       });
       const saveData = await saveRes.json();
       if (!saveRes.ok) throw new Error(saveData.error || "Couldn't save your story.");
