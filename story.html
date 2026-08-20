@@ -141,7 +141,9 @@
     const videoEl = document.getElementById("story-video");
 
     if (story.videoUrl) {
-      mediaEl.style.background = "#000";
+      mediaEl.style.background = story.thumbnailUrl
+        ? `#000 url('${story.thumbnailUrl}') center / cover no-repeat`
+        : "#000";
       iconEl.style.display = "none";
       videoEl.src = story.videoUrl;
       videoEl.style.display = "block";
