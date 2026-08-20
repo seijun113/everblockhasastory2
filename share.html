@@ -37,7 +37,7 @@
   <div class="container">
     <span class="eyebrow">Add To The Map</span>
     <h1>Tell The World About Your Block</h1>
-    <p>Create an account, verify your shirt, then post. A verified Every Block shirt code is required to share.</p>
+    <p>Create an account, verify your order, then post. We confirm your purchase directly with Shopify — no tag code needed.</p>
   </div>
 </section>
 
@@ -52,7 +52,7 @@
       <div id="account-gate" class="form-card">
         <span class="eyebrow">Step 1 of 3</span>
         <h2 style="margin-top:8px; font-size:1.4rem;">Create Your Account</h2>
-        <p style="color:var(--cream-dim);">An account is required before you can verify a shirt and post. This prototype recognizes your account on this browser only.</p>
+        <p style="color:var(--cream-dim);">An account is required before you can verify your order and post. Use the same email you checked out with.</p>
         <div class="field">
           <label for="acct-name">Name</label>
           <input type="text" id="acct-name" placeholder="First name or username">
@@ -61,19 +61,23 @@
           <label for="acct-email">Email</label>
           <input type="email" id="acct-email" placeholder="you@example.com">
         </div>
-        <button type="button" id="create-account-btn" class="btn btn-primary btn-block">Create Account</button>
+        <div class="field">
+          <label for="acct-password">Password</label>
+          <input type="password" id="acct-password" placeholder="At least 8 characters">
+        </div>
+        <button type="button" id="create-account-btn" class="btn btn-primary btn-block">Create Account / Sign In</button>
       </div>
 
       <div id="unlock-gate" class="form-card" style="display:none;">
         <span class="eyebrow">Step 2 of 3</span>
-        <h2 style="margin-top:8px; font-size:1.4rem;">Verify Your Shirt</h2>
-        <p style="color:var(--cream-dim);">Only shirt owners can post — every Every Block tee ships with a unique code on the inside neck tag. Enter it below to unlock the story form.</p>
+        <h2 style="margin-top:8px; font-size:1.4rem;">Verify Your Order</h2>
+        <p style="color:var(--cream-dim);">Only shirt owners can post. Enter the order number from your Every Block Tee purchase and we'll confirm it directly with Shopify — no tag code needed.</p>
         <div class="field">
-          <label for="order-code">Shirt order or tag code</label>
-          <input type="text" id="order-code" placeholder="e.g. EBS-48291">
-          <div class="field-hint">Don't have a shirt yet? <a href="shop.html" style="color:var(--orange); font-weight:600;">Shop the collection</a> to get your code.</div>
+          <label for="order-code">Shopify order number</label>
+          <input type="text" id="order-code" placeholder="e.g. 1001 or #1001">
+          <div class="field-hint">Must match the email on your account above. Don't have a shirt yet? <a href="shop.html" style="color:var(--orange); font-weight:600;">Shop the collection</a>.</div>
         </div>
-        <button type="button" id="unlock-btn" class="btn btn-primary btn-block">Unlock Story Form</button>
+        <button type="button" id="unlock-btn" class="btn btn-primary btn-block">Verify Order</button>
       </div>
 
     <form id="share-form" class="form-card" style="display:none;">
@@ -85,14 +89,14 @@
       </div>
 
       <div class="field">
-        <label for="video-file">Video</label>
+        <label for="video-file">Video (required)</label>
         <div class="dropzone" id="dropzone">
           <input type="file" id="video-file" accept="video/*" style="display:none;">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           <div class="dz-text">Drag & drop a video, or click to browse</div>
         </div>
         <video id="video-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" controls></video>
-        <div class="field-hint">MP4 or MOV, up to 2 minutes.</div>
+        <div class="field-hint">MP4 or MOV, up to 2 minutes. Uploaded directly to our video host and reviewed before it appears publicly.</div>
       </div>
 
       <div class="field">
@@ -116,15 +120,15 @@
       </div>
 
       <button type="submit" class="btn btn-primary btn-block">Post My Story</button>
-      <div class="field-hint" style="text-align:center; margin-top:10px;">Verified members can post unlimited stories — no limit.</div>
+      <div class="field-hint" style="text-align:center; margin-top:10px;">Verified members can post as many stories as they'd like — no limit.</div>
     </form>
 
     <div id="post-success" class="form-card" style="display:none; text-align:center;">
       <div class="feature-icon olive" style="margin:0 auto 14px; width:48px; height:48px;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
-      <h2 style="font-size:1.4rem;">Your Story Is Live!</h2>
-      <p style="color:var(--cream-dim);">Thanks for adding your block to the map. <span id="post-count-line"></span></p>
+      <h2 style="font-size:1.4rem;">Your Story Is Submitted!</h2>
+      <p style="color:var(--cream-dim);"><span id="post-count-line">Thanks for sharing — it'll appear on the site once reviewed.</span></p>
       <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:18px;">
         <button type="button" id="post-another-btn" class="btn btn-primary">Post Another Story</button>
         <a href="stories.html" class="btn btn-outline">View All Stories</a>
@@ -154,7 +158,7 @@
       </div>
 
       <div class="info-box">
-        <strong>Why the shirt code?</strong> Posting is a perk reserved for shirt owners — it's how we keep the map full of real people who've joined the movement. Find your code on the inside neck tag.
+        <strong>Why verify an order?</strong> Posting is a perk reserved for shirt owners — it's how we keep the map full of real people who've joined the movement. We check your order directly with Shopify, so there's no code to hunt for.
       </div>
     </div>
   </div>
