@@ -170,11 +170,14 @@ p { margin: 0 0 1em; }
   cursor: pointer;
 }
 
+.header-actions .btn-primary span.short { display: none; }
+
 @media (max-width: 900px) {
   .main-nav { position: absolute; top: 76px; left: 0; right: 0; background: var(--ink-soft); flex-direction: column; padding: 20px 32px; gap: 16px; border-bottom: 1px solid var(--line); display: none; }
   .main-nav.open { display: flex; }
   .nav-toggle { display: block; }
   .header-actions .btn-primary span.long { display: none; }
+  .header-actions .btn-primary span.short { display: inline; }
 }
 
 /* Hero */
@@ -527,6 +530,7 @@ footer.site-footer {
 .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--cream-dim); }
 .field input[type="text"],
 .field input[type="email"],
+.field input[type="password"],
 .field select,
 .field textarea {
   width: 100%;
