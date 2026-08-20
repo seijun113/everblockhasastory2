@@ -1,9 +1,14 @@
 /* Every Block Has a Story — shared behavior
  *
- * Fully client-side prototype. Accounts, shirt-code verification, and
- * posted stories all live in this browser's localStorage — there is no
- * shared backend, so nothing here is visible to other visitors or devices.
+ * Talks to the real backend (see the separate backend-api project) for
+ * accounts, Shopify order verification, and video posting. Only the
+ * account's own "who am I" pointer and session tokens are cached in
+ * localStorage — everyone's actual account data, verified-purchase status,
+ * and posted videos live server-side and are visible to every visitor.
  */
+
+// EDIT THIS: your backend's real Vercel address, e.g. "https://every-block-backend.vercel.app"
+const API_BASE = "https://every-block-backend.vercel.app";
 
 // ---------- Nav toggle + page setup ----------
 document.addEventListener("DOMContentLoaded", () => {
@@ -53,69 +58,113 @@ const STORIES = [
     body: "Every Lunar New Year, our alley strings up red lanterns from every balcony until the whole street glows for a week straight." },
 ];
 
-// ---------- Local storage helpers for posted stories + verified members ----------
-function getPostedStories() {
-  try { return JSON.parse(localStorage.getItem("ebs_posted_stories") || "[]"); }
-  catch (e) { return []; }
+// ---------- Session tokens (the account itself lives server-side; only
+// these short-lived tokens are cached locally, same as any normal login) ----------
+function getTokens() {
+  try {
+    return {
+      access: localStorage.getItem("ebs_access_token"),
+      refresh: localStorage.getItem("ebs_refresh_token"),
+    };
+  } catch (e) { return { access: null, refresh: null }; }
 }
-function savePostedStories(list) {
-  localStorage.setItem("ebs_posted_stories", JSON.stringify(list));
+function saveTokens(session) {
+  localStorage.setItem("ebs_access_token", session.access_token);
+  localStorage.setItem("ebs_refresh_token", session.refresh_token);
 }
-function getVerifiedAccounts() {
-  try { return JSON.parse(localStorage.getItem("ebs_verified_accounts") || "[]"); }
-  catch (e) { return []; }
-}
-function saveVerifiedAccounts(list) {
-  localStorage.setItem("ebs_verified_accounts", JSON.stringify(list));
-}
-function makeId(prefix) {
-  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function clearTokens() {
+  localStorage.removeItem("ebs_access_token");
+  localStorage.removeItem("ebs_refresh_token");
 }
 
-// ---------- API client (mock — everything lives in localStorage) ----------
+async function tryRefreshToken() {
+  const { refresh } = getTokens();
+  if (!refresh) return false;
+  try {
+    const res = await fetch(API_BASE + "/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.session);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Fetch wrapper that attaches the access token and retries once with a
+// refreshed token if the first attempt comes back unauthorized.
+async function apiFetch(path, options = {}) {
+  const { access } = getTokens();
+  const headers = Object.assign({}, options.headers, access ? { Authorization: "Bearer " + access } : {});
+  let res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  if (res.status === 401 && access) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      const { access: newAccess } = getTokens();
+      const headers2 = Object.assign({}, options.headers, { Authorization: "Bearer " + newAccess });
+      res = await fetch(API_BASE + path, Object.assign({}, options, { headers: headers2 }));
+    }
+  }
+  return res;
+}
+
+// Turns a video record from the backend into the same shape storyCardHTML
+// and story.html already expect, so real posts render exactly like the
+// seed demo stories.
+function videoToStoryShape(v) {
+  return {
+    id: "v_" + v.id,
+    title: v.title,
+    caption: v.caption,
+    body: v.caption,
+    location: v.location,
+    country: v.country,
+    author: v.author,
+    hue: Math.floor(Math.random() * 360),
+    videoUrl: v.iframeUrl || null,
+  };
+}
+
+let API_OFFLINE_WARNED = false;
+function warnOffline() {
+  if (API_OFFLINE_WARNED) return;
+  API_OFFLINE_WARNED = true;
+  console.warn("Every Block Has a Story: couldn't reach the backend at " + API_BASE + ". Showing local demo stories only.");
+}
+
+// ---------- API client (real backend, with graceful offline fallback) ----------
 const API = {
   async listStories() {
-    return [...getPostedStories(), ...STORIES];
+    try {
+      const res = await fetch(API_BASE + "/api/videos");
+      if (!res.ok) throw new Error("bad status");
+      const data = await res.json();
+      const realVideos = (data.videos || []).map(videoToStoryShape);
+      return [...realVideos, ...STORIES];
+    } catch (e) {
+      warnOffline();
+      return STORIES;
+    }
   },
   async getStory(id) {
-    const all = [...getPostedStories(), ...STORIES];
-    return all.find((s) => s.id === id) || null;
-  },
-  async createAccount(name, email) {
-    return { id: makeId("acct"), name, email };
-  },
-  async getMembership(accountId) {
-    const verified = getVerifiedAccounts();
-    return verified.includes(accountId) ? { verified: true } : null;
-  },
-  async verifyMembership(accountId, code) {
-    if (!code || code.trim().length < 4) {
-      throw new Error("Enter the code from your shirt tag to continue.");
+    if (String(id).startsWith("v_")) {
+      const realId = String(id).slice(2);
+      try {
+        const res = await fetch(API_BASE + "/api/videos");
+        if (!res.ok) throw new Error("bad status");
+        const data = await res.json();
+        const v = (data.videos || []).find((x) => x.id === realId);
+        return v ? videoToStoryShape(v) : null;
+      } catch (e) {
+        warnOffline();
+        return null;
+      }
     }
-    const verified = getVerifiedAccounts();
-    if (!verified.includes(accountId)) {
-      verified.push(accountId);
-      saveVerifiedAccounts(verified);
-    }
-    return { verified: true };
-  },
-  async createStory(data) {
-    const story = {
-      id: makeId("s"),
-      accountId: data.accountId,
-      title: data.title,
-      caption: data.caption,
-      body: data.caption,
-      location: data.location,
-      country: data.country,
-      author: data.author || "Anonymous",
-      hue: Math.floor(Math.random() * 360),
-      videoUrl: null,
-    };
-    const posted = getPostedStories();
-    posted.unshift(story);
-    savePostedStories(posted);
-    return story;
+    return STORIES.find((s) => s.id === id) || null;
   },
 };
 
@@ -196,7 +245,8 @@ function showToast(msg) {
   window.__toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
 }
 
-// ---------- Local "who am I" cache ----------
+// ---------- Local "who am I" cache (display only — the real account lives
+// server-side; this just remembers a name/email to show in the banner) ----------
 function getAccount() {
   try { return JSON.parse(localStorage.getItem("ebs_account") || "null"); }
   catch (e) { return null; }
@@ -205,7 +255,7 @@ function saveAccountCache(acct) { localStorage.setItem("ebs_account", JSON.strin
 function clearAccountCache() { localStorage.removeItem("ebs_account"); }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
-// ---------- Account + purchase gate for Share Your Story ----------
+// ---------- Account + Shopify purchase gate for Share Your Story ----------
 function initShareGate() {
   const banner = document.getElementById("member-banner");
   const memberNameEl = document.getElementById("member-name");
@@ -216,8 +266,9 @@ function initShareGate() {
   const createAccountBtn = document.getElementById("create-account-btn");
   const acctNameInput = document.getElementById("acct-name");
   const acctEmailInput = document.getElementById("acct-email");
+  const acctPasswordInput = document.getElementById("acct-password");
   const unlockBtn = document.getElementById("unlock-btn");
-  const codeInput = document.getElementById("order-code");
+  const codeInput = document.getElementById("order-code"); // now holds a Shopify order number
   if (!accountGate || !unlockGate || !form || !createAccountBtn || !unlockBtn) return;
 
   function showStep(step) {
@@ -229,23 +280,39 @@ function initShareGate() {
     if (banner) banner.style.display = step === "form" ? "flex" : "none";
   }
 
+  // Checks the real backend: are we logged in, and is this account
+  // Shopify-verified? Both facts live server-side, not in localStorage.
   async function renderFromState() {
-    const account = getAccount();
-    if (!account) { showStep("account"); return; }
-    if (memberNameEl) memberNameEl.textContent = account.name;
+    const { access } = getTokens();
+    if (!access) { showStep("account"); return; }
 
-    const membership = await API.getMembership(account.id);
-    if (membership) {
-      form.dataset.accountId = account.id;
-      showStep("form");
-    } else {
-      showStep("unlock");
+    try {
+      const res = await apiFetch("/api/auth/session");
+      if (!res.ok) {
+        clearTokens();
+        showStep("account");
+        return;
+      }
+      const data = await res.json();
+      if (memberNameEl) memberNameEl.textContent = data.profile.name || data.user.email;
+      saveAccountCache({ name: data.profile.name, email: data.user.email });
+
+      if (data.profile.shopify_verified) {
+        form.dataset.verified = "true";
+        showStep("form");
+      } else {
+        showStep("unlock");
+      }
+    } catch (err) {
+      showToast("Couldn't reach the server — check your connection and try again.");
+      showStep("account");
     }
   }
 
   createAccountBtn.addEventListener("click", async () => {
     const name = (acctNameInput.value || "").trim();
     const email = (acctEmailInput.value || "").trim();
+    const password = (acctPasswordInput ? acctPasswordInput.value : "").trim();
     if (!name) {
       showToast("Enter your name to create an account.");
       acctNameInput.focus();
@@ -256,13 +323,42 @@ function initShareGate() {
       acctEmailInput.focus();
       return;
     }
+    if (password.length < 8) {
+      showToast("Password must be at least 8 characters.");
+      if (acctPasswordInput) acctPasswordInput.focus();
+      return;
+    }
+
     const originalLabel = createAccountBtn.textContent;
     createAccountBtn.disabled = true;
     createAccountBtn.textContent = "Creating…";
     try {
-      const account = await API.createAccount(name, email);
-      saveAccountCache(account);
-      showToast(`Account created — welcome, ${account.name}!`);
+      // Try creating a new account first; if one already exists for this
+      // email, fall back to logging in with the same email/password.
+      let res = await fetch(API_BASE + "/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      let data = await res.json();
+
+      if (!res.ok) {
+        res = await fetch(API_BASE + "/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't create or sign into that account.");
+      }
+
+      if (!data.session) {
+        throw new Error("Check your email to confirm your account, then enter your password again to sign in.");
+      }
+
+      saveTokens(data.session);
+      saveAccountCache({ name, email });
+      showToast("Signed in — welcome, " + name + "!");
       await renderFromState();
     } catch (err) {
       showToast(err.message || "Couldn't create account.");
@@ -273,11 +369,9 @@ function initShareGate() {
   });
 
   unlockBtn.addEventListener("click", async () => {
-    const account = getAccount();
-    if (!account) { showStep("account"); return; }
-    const code = (codeInput.value || "").trim();
-    if (code.length < 4) {
-      showToast("Enter the code from your shirt tag to continue.");
+    const orderNumber = (codeInput.value || "").trim();
+    if (!orderNumber) {
+      showToast("Enter your Shopify order number to continue.");
       codeInput.focus();
       return;
     }
@@ -285,12 +379,20 @@ function initShareGate() {
     unlockBtn.disabled = true;
     unlockBtn.textContent = "Verifying…";
     try {
-      await API.verifyMembership(account.id, code);
-      showToast("Shirt verified — tell your story below.");
+      const res = await apiFetch("/api/shopify/verify-purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't verify your order.");
+      if (!data.verified) throw new Error(data.reason || "That order couldn't be verified.");
+
+      showToast("Order verified — tell your story below.");
       await renderFromState();
       form.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
-      showToast(err.message || "Couldn't verify your code.");
+      showToast(err.message || "Couldn't verify your order.");
     } finally {
       unlockBtn.disabled = false;
       unlockBtn.textContent = originalLabel;
@@ -300,16 +402,18 @@ function initShareGate() {
   if (switchAccountLink) {
     switchAccountLink.addEventListener("click", (e) => {
       e.preventDefault();
+      clearTokens();
       clearAccountCache();
       acctNameInput.value = "";
       acctEmailInput.value = "";
+      if (acctPasswordInput) acctPasswordInput.value = "";
       codeInput.value = "";
       showStep("account");
       showToast("Signed out on this browser.");
     });
   }
 
-  [acctNameInput, acctEmailInput].forEach((el) => {
+  [acctNameInput, acctEmailInput, acctPasswordInput].forEach((el) => {
     if (!el) return;
     el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); createAccountBtn.click(); } });
   });
@@ -320,12 +424,7 @@ function initShareGate() {
   renderFromState();
 }
 
-// ---------- Share form ----------
-async function countMyStories(accountId) {
-  const stories = await API.listStories();
-  return stories.filter((s) => s.accountId === accountId).length;
-}
-
+// ---------- Share form (real Cloudflare Stream upload) ----------
 function initShareForm() {
   const form = document.getElementById("share-form");
   if (!form) return;
@@ -380,9 +479,8 @@ function initShareForm() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const accountId = form.dataset.accountId;
-    if (!accountId) {
-      showToast("Please verify your shirt code before posting.");
+    if (!form.dataset.verified) {
+      showToast("Please verify your Shopify order before posting.");
       return;
     }
 
@@ -391,26 +489,50 @@ function initShareForm() {
     const location = document.getElementById("story-location").value.trim();
     const country = document.getElementById("story-country").value.trim();
     const author = document.getElementById("story-author").value.trim() || "Anonymous";
+    const file = fileInput.files[0];
 
     if (!title || !caption || !location) {
       showToast("Please fill in a title, location, and caption.");
       return;
     }
-
-    const data = { accountId, title, caption, location, country, author };
+    if (!file) {
+      showToast("A video is required to post — attach one above.");
+      return;
+    }
 
     const originalLabel = submitBtn ? submitBtn.textContent : "";
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Posting…"; }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Getting upload link…"; }
 
     try {
-      await API.createStory(data);
-      showToast("Your story is live!");
+      // 1. Ask our backend for a one-time Cloudflare Stream upload URL.
+      const urlRes = await apiFetch("/api/videos/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) throw new Error(urlData.error || "Couldn't start the upload.");
 
-      const count = await countMyStories(accountId);
+      // 2. Upload the video file straight to Cloudflare — never through our own server.
+      if (submitBtn) submitBtn.textContent = "Uploading video…";
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
+      const uploadRes = await fetch(urlData.uploadURL, { method: "POST", body: uploadForm });
+      if (!uploadRes.ok) throw new Error("Video upload failed — try a smaller file or a different format.");
+
+      // 3. Save the story's details, linked to that uploaded video.
+      if (submitBtn) submitBtn.textContent = "Posting…";
+      const saveRes = await apiFetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cloudflareUid: urlData.uid, title, caption, location, country, author }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error || "Couldn't save your story.");
+
+      showToast("Your story is submitted!");
       if (postCountLine) {
-        postCountLine.textContent = count === 1
-          ? "That's your first story on the map."
-          : `That's ${count} stories you've shared — keep going, there's no limit.`;
+        postCountLine.textContent = "Thanks for sharing — new videos are reviewed before they appear publicly, so it may take a little while to show up.";
       }
 
       resetForm();
