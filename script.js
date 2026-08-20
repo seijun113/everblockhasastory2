@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   markActiveNav();
   renderAllStoryGrids();
+  renderMapPins();
   wireCarousel();
   initShareGate();
   initShareForm();
@@ -127,7 +128,47 @@ function videoToStoryShape(v) {
     hue: Math.floor(Math.random() * 360),
     videoUrl: v.iframeUrl || null,
     thumbnailUrl: v.thumbnailUrl || null,
+    lat: typeof v.lat === "number" ? v.lat : null,
+    lng: typeof v.lng === "number" ? v.lng : null,
   };
+}
+
+// ---------- Map pin placement ----------
+// Converts real-world lat/lng into a left%/top% position on the site's
+// stylized worldmap-base image. This is a plain equirectangular projection
+// (left = longitude, top = latitude) with a small scale + margin correction
+// fitted to match the 8 hand-placed seed pins already in map.html, so
+// auto-placed pins line up visually with the existing ones.
+function latLngToMapPercent(lat, lng) {
+  const rawLeft = ((lng + 180) / 360) * 100;
+  const rawTop = ((90 - lat) / 180) * 100;
+  const left = 0.88 * rawLeft + 6;
+  const top = 0.88 * rawTop + 6;
+  return { left, top };
+}
+
+// Adds a pin to the map for every real posted story that has coordinates.
+// Seed demo stories already have their own hand-placed pins directly in
+// map.html, so only real (v_...) stories are added here to avoid duplicates.
+async function renderMapPins() {
+  const mapEl = document.querySelector(".hero-map");
+  if (!mapEl) return;
+  const stories = await API.listStories();
+  const withCoords = stories.filter(
+    (s) => String(s.id).startsWith("v_") && typeof s.lat === "number" && typeof s.lng === "number"
+  );
+  const pinsHTML = withCoords
+    .map((s) => {
+      const { left, top } = latLngToMapPercent(s.lat, s.lng);
+      const hue = s.hue || 30;
+      const color = `hsl(${hue} 40% 45%)`;
+      const title = `${s.location || ""} — ${s.title || "Untitled Story"}`;
+      return `<a class="map-pin" href="story.html?id=${encodeURIComponent(s.id)}" style="--pc:${color}; left:${left.toFixed(1)}%; top:${top.toFixed(1)}%;" title="${escapeAttr(title)}"></a>`;
+    })
+    .join("");
+  if (pinsHTML) {
+    mapEl.insertAdjacentHTML("beforeend", pinsHTML);
+  }
 }
 
 let API_OFFLINE_WARNED = false;
