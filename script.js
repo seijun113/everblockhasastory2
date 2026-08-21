@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initShareGate();
   initShareForm();
   initShop();
+  initAccountNav();
+  initAccountPage();
   document.querySelectorAll(".chip[data-filter]").forEach((chip) => {
     chip.addEventListener("click", () => filterStories(chip.getAttribute("data-filter")));
   });
@@ -681,4 +683,248 @@ function initShop() {
       window.location.href = `https://${SHOPIFY_STORE_DOMAIN}/cart/${variantId}:1`;
     });
   }
+}
+
+// ---------- Account nav link (every page) ----------
+// Shows "Log In" when signed out, or the user's name once we've confirmed
+// a real session with the backend. Safe to call on every page — it no-ops
+// if there's no #nav-account-link element or no stored token.
+function initAccountNav() {
+  const link = document.getElementById("nav-account-link");
+  if (!link) return;
+  const { access } = getTokens();
+  if (!access) { link.textContent = "Log In"; return; }
+
+  apiFetch("/api/auth/session")
+    .then(async (res) => {
+      if (!res.ok) { clearTokens(); link.textContent = "Log In"; return; }
+      const data = await res.json();
+      link.textContent = data.profile.name || "My Account";
+    })
+    .catch(() => { link.textContent = "Log In"; });
+}
+
+// ---------- My Account page ----------
+function initAccountPage() {
+  const loggedOutView = document.getElementById("account-logged-out");
+  const loggedInView = document.getElementById("account-logged-in");
+  if (!loggedOutView || !loggedInView) return; // not on account.html
+
+  const heroTitle = document.getElementById("account-hero-title");
+  const heroSub = document.getElementById("account-hero-sub");
+  const nameInput = document.getElementById("acct-page-name");
+  const emailInput = document.getElementById("acct-page-email");
+  const passwordInput = document.getElementById("acct-page-password");
+  const submitBtn = document.getElementById("acct-page-submit");
+
+  const nameEl = document.getElementById("account-name");
+  const emailEl = document.getElementById("account-email");
+  const verifiedEl = document.getElementById("account-verified");
+  const myStoriesGrid = document.getElementById("my-stories-grid");
+  const myStoriesEmpty = document.getElementById("my-stories-empty");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  function showLoggedOut() {
+    loggedOutView.style.display = "block";
+    loggedInView.style.display = "none";
+    if (heroTitle) heroTitle.textContent = "Log In or Create an Account";
+    if (heroSub) heroSub.textContent = "Sign in to check your verification status and see the stories you've posted.";
+  }
+  function showLoggedIn(name) {
+    loggedOutView.style.display = "none";
+    loggedInView.style.display = "block";
+    if (heroTitle) heroTitle.textContent = "Welcome back" + (name ? ", " + name : "");
+    if (heroSub) heroSub.textContent = "Here's your account and everything you've shared.";
+  }
+
+  async function renderState() {
+    const { access } = getTokens();
+    if (!access) { showLoggedOut(); return; }
+
+    try {
+      const res = await apiFetch("/api/auth/session");
+      if (!res.ok) { clearTokens(); showLoggedOut(); return; }
+      const data = await res.json();
+
+      showLoggedIn(data.profile.name);
+      if (nameEl) nameEl.textContent = data.profile.name || "—";
+      if (emailEl) emailEl.textContent = data.user.email;
+      if (verifiedEl) {
+        verifiedEl.textContent = data.profile.shopify_verified
+          ? "✓ Verified shirt owner"
+          : "Not verified yet — verify an order on the Share Your Story page.";
+        verifiedEl.style.color = data.profile.shopify_verified ? "var(--olive-light, #9db07a)" : "var(--cream-dim)";
+      }
+      saveAccountCache({ name: data.profile.name, email: data.user.email });
+
+      const link = document.getElementById("nav-account-link");
+      if (link) link.textContent = data.profile.name || "My Account";
+
+      await renderMyStories();
+    } catch (err) {
+      showToast("Couldn't reach the server — check your connection and try again.");
+      showLoggedOut();
+    }
+  }
+
+  async function renderMyStories() {
+    if (!myStoriesGrid) return;
+    myStoriesGrid.innerHTML = "";
+    if (myStoriesEmpty) myStoriesEmpty.style.display = "none";
+    try {
+      const res = await apiFetch("/api/videos/mine");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't load your stories.");
+      const videos = data.videos || [];
+      if (!videos.length) {
+        if (myStoriesEmpty) {
+          myStoriesEmpty.textContent = "You haven't posted any stories yet.";
+          myStoriesEmpty.style.display = "block";
+        }
+        return;
+      }
+      myStoriesGrid.innerHTML = videos.map(myStoryCardHTML).join("");
+      wireDeleteButtons();
+    } catch (err) {
+      if (myStoriesEmpty) {
+        myStoriesEmpty.textContent = "Couldn't load your stories right now.";
+        myStoriesEmpty.style.display = "block";
+      }
+    }
+  }
+
+  function wireDeleteButtons() {
+    myStoriesGrid.querySelectorAll(".delete-story-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title") || "this story";
+        if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
+
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Deleting…";
+        try {
+          const res = await apiFetch("/api/videos/" + encodeURIComponent(id), { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Couldn't delete that story.");
+
+          showToast("Story deleted.");
+          await renderMyStories();
+          // Refresh anywhere else the story might have been visible.
+          renderAllStoryGrids();
+          renderMapPins();
+        } catch (err) {
+          showToast(err.message || "Couldn't delete that story.");
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
+      });
+    });
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener("click", async () => {
+      const name = (nameInput.value || "").trim();
+      const email = (emailInput.value || "").trim();
+      const password = (passwordInput.value || "").trim();
+
+      if (!isValidEmail(email)) {
+        showToast("Enter a valid email.");
+        emailInput.focus();
+        return;
+      }
+      if (password.length < 8) {
+        showToast("Password must be at least 8 characters.");
+        passwordInput.focus();
+        return;
+      }
+
+      const originalLabel = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in…";
+      try {
+        // Same pattern as Share Your Story: try creating an account first,
+        // fall back to logging in if one already exists for this email.
+        let res = await fetch(API_BASE + "/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name || email.split("@")[0], email, password }),
+        });
+        let data = await res.json();
+
+        if (!res.ok) {
+          res = await fetch(API_BASE + "/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+          data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Couldn't create or sign into that account.");
+        }
+
+        if (!data.session) {
+          throw new Error("Check your email to confirm your account, then enter your password again to log in.");
+        }
+
+        saveTokens(data.session);
+        showToast("Signed in!");
+        await renderState();
+      } catch (err) {
+        showToast(err.message || "Couldn't sign in.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    });
+  }
+
+  [nameInput, emailInput, passwordInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitBtn.click(); } });
+  });
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      try { await apiFetch("/api/auth/logout", { method: "POST" }); } catch (e) { /* stateless — fine either way */ }
+      clearTokens();
+      clearAccountCache();
+      const link = document.getElementById("nav-account-link");
+      if (link) link.textContent = "Log In";
+      showToast("Logged out.");
+      showLoggedOut();
+    });
+  }
+
+  renderState();
+}
+
+function myStoryCardHTML(v) {
+  const labels = { pending: "Pending review", approved: "Live", rejected: "Not approved" };
+  const colors = { pending: "var(--gold)", approved: "var(--olive-light, #9db07a)", rejected: "var(--orange)" };
+  const statusLabel = labels[v.status] || v.status;
+  const statusColor = colors[v.status] || "var(--cream-dim)";
+  const media = v.thumbnailUrl
+    ? `background-image:url('${escapeAttr(v.thumbnailUrl)}'); background-size:cover; background-position:center;`
+    : `background: linear-gradient(135deg, #333, var(--ink-soft));`;
+  const title = escapeHtml(v.title || "Untitled Story");
+  const viewBtn = v.status === "approved"
+    ? `<a href="story.html?id=v_${encodeURIComponent(v.id)}" class="btn btn-outline" style="flex:1; padding:8px; font-size:0.8rem; text-align:center;">View</a>`
+    : "";
+
+  // Not wrapping the whole card in an <a> here (unlike the public story
+  // grids) since it also needs a Delete button — nesting a button inside
+  // an anchor is invalid HTML and clicks behave unreliably across browsers.
+  return `
+  <div class="story-card" style="cursor:default;">
+    <div class="story-media-fallback" style="${media}"></div>
+    <span class="story-loc" style="background:${statusColor}; color:#14140f; font-weight:700;">${escapeHtml(statusLabel)}</span>
+    <div class="story-body">
+      <h3>${title}</h3>
+      <div class="story-user"><span>${escapeHtml(v.location || "")}</span></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        ${viewBtn}
+        <button type="button" class="btn btn-outline delete-story-btn" data-id="${escapeAttr(v.id)}" data-title="${escapeAttr(v.title || "this story")}" style="flex:1; padding:8px; font-size:0.8rem; border-color:var(--orange); color:var(--orange);">Delete</button>
+      </div>
+    </div>
+  </div>`;
 }
