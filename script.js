@@ -42,24 +42,11 @@ function markActiveNav() {
 }
 
 // ---------- Seed story content ----------
-const STORIES = [
-  { id: "s1", title: "The Corner That Raised Me", caption: "The bodega on 8th where every kid on the block learned to count change.", location: "New York, USA", country: "USA", author: "Jamal R.", hue: 18, videoUrl: null,
-    body: "The bodega on 8th Street has been there longer than I have. Mr. Ortiz knew every kid on the block by name, and knew exactly how much credit to extend until Friday." },
-  { id: "s2", title: "Market Days, Dreaming Bigger", caption: "Saturdays at the market taught me more about business than school ever did.", location: "Lagos, Nigeria", country: "Nigeria", author: "Aisha T.", hue: 150, videoUrl: null,
-    body: "Every Saturday my mother took me to Balogun Market before sunrise to help set up her fabric stall. I learned to negotiate before I learned long division." },
-  { id: "s3", title: "Roots, Rituals, Remembered", caption: "Every autumn the whole street walks to the shrine together.", location: "Kyoto, Japan", country: "Japan", author: "Hiroshi K.", hue: 260, videoUrl: null,
-    body: "Every autumn, when the maple leaves turn, our whole street walks together to the small shrine at the end of the lane." },
-  { id: "s4", title: "Colors of Resilience", caption: "We painted every wall on the hillside so the world could see us.", location: "Medellín, Colombia", country: "Colombia", author: "María G.", hue: 30, videoUrl: null,
-    body: "Comuna 13 used to be known for one thing, and it wasn't good. So the artists in our neighborhood picked up brushes instead of anything else." },
-  { id: "s5", title: "Where the Trains Slow Down", caption: "My grandmother still waves at every train that passes our house.", location: "Mumbai, India", country: "India", author: "Priya N.", hue: 340, videoUrl: null,
-    body: "Our house sits right where the local trains slow down before the station, and my grandmother has waved at every single one for forty years." },
-  { id: "s6", title: "Sunset Over the Souk", caption: "The smell of cumin and mint tea means I'm almost home.", location: "Marrakech, Morocco", country: "Morocco", author: "Youssef B.", hue: 200, videoUrl: null,
-    body: "The souk near our house comes alive right as the sun starts to drop — the smell of cumin, grilled meat, and mint tea rolling through the alleys." },
-  { id: "s7", title: "Concrete and Community", caption: "Basketball hoops turned strangers into family, one game at a time.", location: "Chicago, USA", country: "USA", author: "DeShawn L.", hue: 210, videoUrl: null,
-    body: "The court on our block doesn't have a net, and one rim is bent from a kid climbing it on a dare in 2009. Doesn't matter." },
-  { id: "s8", title: "The Alley of Lanterns", caption: "Every Lunar New Year the alley glows red for a week straight.", location: "Taipei, Taiwan", country: "Taiwan", author: "Wen C.", hue: 5, videoUrl: null,
-    body: "Every Lunar New Year, our alley strings up red lanterns from every balcony until the whole street glows for a week straight." },
-];
+// Left empty on purpose — the placeholder/demo stories have been removed.
+// Only real posts from the backend show up now. If listStories() can't
+// reach the backend, this being empty means the grids just show nothing
+// rather than falling back to fake content.
+const STORIES = [];
 
 // ---------- Session tokens (the account itself lives server-side; only
 // these short-lived tokens are cached locally, same as any normal login) ----------
@@ -177,7 +164,7 @@ let API_OFFLINE_WARNED = false;
 function warnOffline() {
   if (API_OFFLINE_WARNED) return;
   API_OFFLINE_WARNED = true;
-  console.warn("Every Block Has a Story: couldn't reach the backend at " + API_BASE + ". Showing local demo stories only.");
+  console.warn("Every Block Has a Story: couldn't reach the backend at " + API_BASE + ". No stories to show right now.");
 }
 
 // ---------- API client (real backend, with graceful offline fallback) ----------
