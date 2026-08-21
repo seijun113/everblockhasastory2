@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="account.html" class="nav-account-link active" id="nav-account-link">Log In</a>
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Your Account</span>
+    <h1 id="account-hero-title">Log In or Create an Account</h1>
+    <p id="account-hero-sub">Sign in to check your verification status and see the stories you've posted.</p>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding-top:20px;">
+  <div class="container" style="max-width:620px;">
+
+    <!-- Logged out: login/signup form -->
+    <div id="account-logged-out" class="form-card">
+      <h2 style="margin-top:0; font-size:1.4rem;">Log In / Sign Up</h2>
+      <p style="color:var(--cream-dim);">New here? Enter your name, email, and a password to create an account. Already have one? Just enter your email and password.</p>
+      <div class="field">
+        <label for="acct-page-name">Name (only needed the first time)</label>
+        <input type="text" id="acct-page-name" placeholder="First name or username">
+      </div>
+      <div class="field">
+        <label for="acct-page-email">Email</label>
+        <input type="email" id="acct-page-email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="acct-page-password">Password</label>
+        <input type="password" id="acct-page-password" placeholder="At least 8 characters">
+      </div>
+      <button type="button" id="acct-page-submit" class="btn btn-primary btn-block">Log In / Sign Up</button>
+    </div>
+
+    <!-- Logged in: profile + my stories -->
+    <div id="account-logged-in" style="display:none;">
+      <div class="form-card">
+        <span class="eyebrow">Profile</span>
+        <h2 style="margin-top:8px; font-size:1.4rem;" id="account-name">—</h2>
+        <p style="color:var(--cream-dim); margin-bottom:4px;" id="account-email"></p>
+        <p style="font-weight:600;" id="account-verified"></p>
+        <button type="button" id="logout-btn" class="btn btn-outline" style="margin-top:12px;">Log Out</button>
+      </div>
+
+      <div style="margin-top:40px;">
+        <h2 style="font-size:1.5rem;">Your Stories</h2>
+        <p id="my-stories-empty" style="color:var(--cream-dim); display:none;">You haven't posted any stories yet.</p>
+        <div id="my-stories-grid" class="story-grid" style="margin-top:20px;"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="footer-cta">
+  <div class="container">
+    <div>
+      <h3 style="margin:0;">Don't have the shirt yet?</h3>
+      <p style="margin:6px 0 0; color:var(--cream-dim);">Grab one and unlock posting.</p>
+    </div>
+    <a href="shop.html" class="btn btn-primary">Shop the Collection
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom:12px;">
+          <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+          <span class="logo-tag">HAS A STORY</span>
+        </div>
+        <p>A global platform for the stories that shape our blocks, our cities, and our countries.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="stories.html">Stories</a></li>
+          <li><a href="map.html">World Map</a></li>
+          <li><a href="share.html">Share Your Story</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="shop.html">The Collection</a></li>
+          <li><a href="shop.html">Every Block Tee</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+      <span>Made for every block, everywhere.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
