@@ -90,13 +90,24 @@ async function tryRefreshToken() {
 async function apiFetch(path, options = {}) {
   const { access } = getTokens();
   const headers = Object.assign({}, options.headers, access ? { Authorization: "Bearer " + access } : {});
-  let res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  let res;
+  try {
+    res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  } catch (err) {
+    // Wrap raw browser/network errors (cryptic in some browsers, e.g.
+    // Safari) with a clearer message that says what was actually happening.
+    throw new Error(`Couldn't reach the server for ${path} (${err.message}). Check your internet connection and try again.`);
+  }
   if (res.status === 401 && access) {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
       const { access: newAccess } = getTokens();
       const headers2 = Object.assign({}, options.headers, { Authorization: "Bearer " + newAccess });
-      res = await fetch(API_BASE + path, Object.assign({}, options, { headers: headers2 }));
+      try {
+        res = await fetch(API_BASE + path, Object.assign({}, options, { headers: headers2 }));
+      } catch (err) {
+        throw new Error(`Couldn't reach the server for ${path} (${err.message}). Check your internet connection and try again.`);
+      }
     }
   }
   return res;
@@ -540,8 +551,14 @@ function initShareForm() {
     thumbDropzone.classList.add("has-file");
     thumbDropzone.querySelector(".dz-text").textContent = `Selected: ${file.name}`;
     if (file.type.startsWith("image/") && thumbPreview) {
-      thumbPreview.src = URL.createObjectURL(file);
-      thumbPreview.style.display = "block";
+      try {
+        thumbPreview.src = URL.createObjectURL(file);
+        thumbPreview.style.display = "block";
+      } catch (err) {
+        // Preview is a nice-to-have — if it fails for any reason, the file
+        // is still attached and will still upload fine on submit.
+        console.warn("Couldn't generate thumbnail preview:", err);
+      }
     }
   }
 
@@ -581,6 +598,9 @@ function initShareForm() {
       });
       const urlData = await urlRes.json();
       if (!urlRes.ok) throw new Error(urlData.error || "Couldn't start the upload.");
+      if (!urlData.uploadURL) {
+        throw new Error("The server didn't return an upload address. Check the backend's Cloudflare Stream settings and try again.");
+      }
 
       // 2. Upload the video file straight to Cloudflare — never through our own server.
       if (submitBtn) submitBtn.textContent = "Uploading video…";
