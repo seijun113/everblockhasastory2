@@ -172,6 +172,19 @@ p { margin: 0 0 1em; }
 
 .header-actions .btn-primary span.short { display: none; }
 
+.nav-account-link {
+  color: var(--cream-dim);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-account-link:hover, .nav-account-link.active { color: var(--cream); border-color: var(--orange); }
+
 @media (max-width: 900px) {
   .main-nav { position: absolute; top: 76px; left: 0; right: 0; background: var(--ink-soft); flex-direction: column; padding: 20px 32px; gap: 16px; border-bottom: 1px solid var(--line); display: none; }
   .main-nav.open { display: flex; }
