@@ -74,6 +74,25 @@
   </div>
 </section>
 
+<section id="story-comments-section" class="section section-dark" style="padding-top:10px; display:none;">
+  <div class="container" style="max-width:820px;">
+    <h2 style="font-size:1.4rem; margin-bottom:20px;">Comments</h2>
+
+    <div id="comments-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;"></div>
+    <p id="comments-empty" style="color:var(--cream-dim); display:none;">No comments yet — be the first.</p>
+
+    <div id="comment-form-logged-in" style="display:none;">
+      <div class="field">
+        <textarea id="comment-input" placeholder="Add a comment…" style="min-height:70px;"></textarea>
+      </div>
+      <button type="button" id="comment-submit-btn" class="btn btn-primary">Post Comment</button>
+    </div>
+    <div id="comment-form-logged-out" class="info-box" style="display:none;">
+      <a href="account.html" style="color:var(--orange); font-weight:600;">Log in</a> to leave a comment.
+    </div>
+  </div>
+</section>
+
 <section id="story-not-found" class="section section-dark" style="padding-top:0; display:none;">
   <div class="container" style="text-align:center; padding:40px 0 60px;">
     <h1>Story Not Found</h1>
@@ -161,6 +180,10 @@
     document.getElementById("story-body").textContent = story.body || story.caption || "";
 
     foundEl.style.display = "block";
+
+    // Comments only apply to real posted stories (id looks like "v_<uuid>").
+    const realId = String(story.id).startsWith("v_") ? String(story.id).slice(2) : null;
+    if (realId) initStoryComments(realId);
   })();
 </script>
 </body>
