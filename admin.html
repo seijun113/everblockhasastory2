@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin Review — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+    </nav>
+    <div class="header-actions">
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Admin Only</span>
+    <h1>Review Submissions</h1>
+    <p>Watch, approve, or reject stories before they go live. This page isn't linked anywhere on the site — keep its address to yourself.</p>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding-top:20px;">
+  <div class="container" style="max-width:900px;">
+
+    <div id="admin-key-gate" class="form-card">
+      <h2 style="margin-top:0; font-size:1.3rem;">Enter Admin Key</h2>
+      <p style="color:var(--cream-dim);">This is the <code>618113</code> value you set in your backend's Vercel environment variables.</p>
+      <div class="field">
+        <label for="admin-key-input">Admin key</label>
+        <input type="password" id="admin-key-input" placeholder="Paste your 618113">
+      </div>
+      <button type="button" id="admin-key-submit" class="btn btn-primary btn-block">Unlock</button>
+      <div id="admin-key-error" class="field-hint" style="color:var(--orange); display:none; margin-top:10px;"></div>
+    </div>
+
+    <div id="admin-panel" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+        <div class="filter-bar" style="margin:0;">
+          <button class="chip active" data-status="pending">Pending</button>
+          <button class="chip" data-status="approved">Approved</button>
+          <button class="chip" data-status="rejected">Rejected</button>
+          <button class="chip" data-status="all">All</button>
+        </div>
+        <button type="button" id="admin-refresh-btn" class="btn btn-outline" style="padding:8px 16px; font-size:0.85rem;">Refresh</button>
+      </div>
+
+      <div id="admin-list" style="display:flex; flex-direction:column; gap:24px;"></div>
+      <p id="admin-empty" style="color:var(--cream-dim); display:none;"></p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+<script>
+(function () {
+  const gate = document.getElementById("admin-key-gate");
+  const panel = document.getElementById("admin-panel");
+  const keyInput = document.getElementById("admin-key-input");
+  const keySubmit = document.getElementById("admin-key-submit");
+  const keyError = document.getElementById("admin-key-error");
+  const listEl = document.getElementById("admin-list");
+  const emptyEl = document.getElementById("admin-empty");
+  const refreshBtn = document.getElementById("admin-refresh-btn");
+  const chips = document.querySelectorAll(".chip[data-status]");
+
+  let adminKey = sessionStorage.getItem("ebs_admin_key") || "";
+  let currentStatus = "pending";
+
+  function showPanel() {
+    gate.style.display = "none";
+    panel.style.display = "block";
+  }
+  function showGate(message) {
+    gate.style.display = "block";
+    panel.style.display = "none";
+    if (message) {
+      keyError.textContent = message;
+      keyError.style.display = "block";
+    }
+  }
+
+  async function loadVideos() {
+    listEl.innerHTML = "<p style='color:var(--cream-dim);'>Loading…</p>";
+    emptyEl.style.display = "none";
+    try {
+      const res = await fetch(API_BASE + "/api/admin/videos?status=" + encodeURIComponent(currentStatus), {
+        headers: { "x-admin-key": adminKey },
+      });
+      if (res.status === 401) {
+        sessionStorage.removeItem("ebs_admin_key");
+        showGate("That key was rejected. Double-check your ADMIN_API_KEY and try again.");
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't load submissions.");
+      showPanel();
+      renderVideos(data.videos || []);
+    } catch (err) {
+      listEl.innerHTML = "";
+      emptyEl.textContent = err.message || "Couldn't load submissions.";
+      emptyEl.style.display = "block";
+    }
+  }
+
+  function renderVideos(videos) {
+    if (!videos.length) {
+      listEl.innerHTML = "";
+      emptyEl.textContent = "Nothing here.";
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+    listEl.innerHTML = videos.map(adminVideoCardHTML).join("");
+    wireActionButtons();
+  }
+
+  function adminVideoCardHTML(v) {
+    let when = "";
+    try { when = new Date(v.created_at).toLocaleString(); } catch (e) { when = ""; }
+    const player = v.iframeUrl
+      ? `<iframe src="${v.iframeUrl}" style="width:100%; height:100%; border:none;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen></iframe>`
+      : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--cream-dim);">No video</div>`;
+    return `
+    <div class="form-card" style="display:grid; grid-template-columns:260px 1fr; gap:20px;">
+      <div style="position:relative; aspect-ratio:4/5; border-radius:8px; overflow:hidden; background:#000;">
+        ${player}
+      </div>
+      <div>
+        <span class="story-loc" style="position:static; display:inline-flex;">${escapeHtml(v.location || "")}</span>
+        <h3 style="margin:10px 0 4px;">${escapeHtml(v.title || "Untitled")}</h3>
+        <div style="color:var(--cream-dim); font-size:0.85rem; margin-bottom:10px;">By ${escapeHtml(v.author || "Anonymous")} &middot; ${escapeHtml(when)} &middot; status: <strong>${escapeHtml(v.status)}</strong></div>
+        <p style="color:var(--cream-dim); font-size:0.95rem; margin-bottom:16px;">${escapeHtml(v.caption || "")}</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary admin-action-btn" data-id="${escapeAttr(v.id)}" data-action="approved" style="padding:8px 18px; font-size:0.85rem;">Approve</button>
+          <button type="button" class="btn btn-outline admin-action-btn" data-id="${escapeAttr(v.id)}" data-action="rejected" style="padding:8px 18px; font-size:0.85rem; border-color:var(--orange); color:var(--orange);">Reject</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function wireActionButtons() {
+    listEl.querySelectorAll(".admin-action-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = action === "approved" ? "Approving…" : "Rejecting…";
+        try {
+          const res = await fetch(API_BASE + "/api/videos/" + encodeURIComponent(id) + "/approve", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+            body: JSON.stringify({ status: action }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Couldn't update that video.");
+          showToast(action === "approved" ? "Approved." : "Rejected.");
+          await loadVideos();
+        } catch (err) {
+          showToast(err.message || "Couldn't update that video.");
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+    });
+  }
+
+  keySubmit.addEventListener("click", () => {
+    const val = (keyInput.value || "").trim();
+    if (!val) { showToast("Enter your admin key."); return; }
+    adminKey = val;
+    sessionStorage.setItem("ebs_admin_key", val);
+    keyError.style.display = "none";
+    loadVideos();
+  });
+  keyInput.addEventListener("keydown", (e) => { if (e.key === "Enter") keySubmit.click(); });
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chips.forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      currentStatus = chip.getAttribute("data-status");
+      loadVideos();
+    });
+  });
+
+  if (refreshBtn) refreshBtn.addEventListener("click", loadVideos);
+
+  if (adminKey) {
+    loadVideos();
+  } else {
+    showGate();
+  }
+})();
+</script>
+</body>
+</html>
