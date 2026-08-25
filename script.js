@@ -935,3 +935,140 @@ function myStoryCardHTML(v) {
     </div>
   </div>`;
 }
+
+// ---------- Comments on a story page ----------
+// "Live" in the sense of auto-refreshing — polls for new comments every
+// few seconds while the page is open, no manual reload needed. Any
+// logged-in account can comment; no purchase verification required (that's
+// only for posting a story itself).
+let __commentsPollTimer = null;
+
+async function initStoryComments(videoId) {
+  const section = document.getElementById("story-comments-section");
+  if (!section || !videoId) return;
+  section.style.display = "block";
+
+  const listEl = document.getElementById("comments-list");
+  const emptyEl = document.getElementById("comments-empty");
+  const loggedInBox = document.getElementById("comment-form-logged-in");
+  const loggedOutBox = document.getElementById("comment-form-logged-out");
+  const input = document.getElementById("comment-input");
+  const submitBtn = document.getElementById("comment-submit-btn");
+
+  let currentUserId = null;
+
+  function renderComments(comments) {
+    if (!listEl) return;
+    if (!comments.length) {
+      listEl.innerHTML = "";
+      if (emptyEl) emptyEl.style.display = "block";
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = "none";
+    listEl.innerHTML = comments.map((c) => commentHTML(c, currentUserId)).join("");
+    wireCommentDeleteButtons();
+  }
+
+  function wireCommentDeleteButtons() {
+    listEl.querySelectorAll(".delete-comment-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!window.confirm("Delete this comment? This can't be undone.")) return;
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Deleting…";
+        try {
+          const res = await apiFetch("/api/comments/" + encodeURIComponent(id), { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Couldn't delete that comment.");
+          await loadComments();
+        } catch (err) {
+          showToast(err.message || "Couldn't delete that comment.");
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
+      });
+    });
+  }
+
+  async function loadComments() {
+    try {
+      const res = await fetch(API_BASE + "/api/videos/" + encodeURIComponent(videoId) + "/comments");
+      if (!res.ok) return;
+      const data = await res.json();
+      renderComments(data.comments || []);
+    } catch (e) {
+      // Silent — a failed poll just keeps showing the last known comments.
+    }
+  }
+
+  const { access } = getTokens();
+  if (loggedInBox) loggedInBox.style.display = access ? "block" : "none";
+  if (loggedOutBox) loggedOutBox.style.display = access ? "none" : "block";
+
+  if (access) {
+    try {
+      const res = await apiFetch("/api/auth/session");
+      if (res.ok) {
+        const data = await res.json();
+        currentUserId = data.user.id;
+      }
+    } catch (e) {
+      // If this fails, comments just won't show a Delete option — not fatal.
+    }
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener("click", async () => {
+      const text = (input.value || "").trim();
+      if (!text) {
+        showToast("Write something first.");
+        return;
+      }
+      const originalLabel = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Posting…";
+      try {
+        const res = await apiFetch("/api/videos/" + encodeURIComponent(videoId) + "/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't post your comment.");
+        input.value = "";
+        await loadComments();
+      } catch (err) {
+        showToast(err.message || "Couldn't post your comment.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    });
+  }
+
+  await loadComments();
+
+  if (__commentsPollTimer) clearInterval(__commentsPollTimer);
+  __commentsPollTimer = setInterval(loadComments, 6000);
+}
+
+function commentHTML(c, currentUserId) {
+  const initials = (c.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  let when = "";
+  try { when = new Date(c.created_at).toLocaleString(); } catch (e) { when = ""; }
+  const isMine = currentUserId && c.profile_id === currentUserId;
+  const deleteLink = isMine
+    ? `<button type="button" class="delete-comment-btn" data-id="${escapeAttr(c.id)}" style="background:none; border:none; color:var(--orange); font-size:0.8rem; font-weight:600; cursor:pointer; padding:0;">Delete</button>`
+    : "";
+  return `
+  <div style="border-bottom:1px solid var(--line); padding-bottom:14px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <span class="avatar" style="width:30px; height:30px; font-size:0.75rem;">${escapeHtml(initials)}</span>
+      <strong style="font-size:0.9rem;">${escapeHtml(c.author || "Anonymous")}</strong>
+      <span style="color:var(--cream-dim); font-size:0.8rem;">${escapeHtml(when)}</span>
+      ${deleteLink ? `<span style="margin-left:auto;">${deleteLink}</span>` : ""}
+    </div>
+    <p style="color:var(--cream-dim); margin:0; font-size:0.95rem; line-height:1.5;">${escapeHtml(c.body || "")}</p>
+  </div>`;
+}
