@@ -41,10 +41,10 @@
 
     <div id="admin-key-gate" class="form-card">
       <h2 style="margin-top:0; font-size:1.3rem;">Enter Admin Key</h2>
-      <p style="color:var(--cream-dim);">(Hidden)</p>
+      <p style="color:var(--cream-dim);">This is the <code>ADMIN_API_KEY</code> value you set in your backend's Vercel environment variables.</p>
       <div class="field">
         <label for="admin-key-input">Admin key</label>
-        <input type="password" id="admin-key-input" placeholder="Paste your admin password">
+        <input type="password" id="admin-key-input" placeholder="Paste your ADMIN_API_KEY">
       </div>
       <button type="button" id="admin-key-submit" class="btn btn-primary btn-block">Unlock</button>
       <div id="admin-key-error" class="field-hint" style="color:var(--orange); display:none; margin-top:10px;"></div>
@@ -63,6 +63,19 @@
 
       <div id="admin-list" style="display:flex; flex-direction:column; gap:24px;"></div>
       <p id="admin-empty" style="color:var(--cream-dim); display:none;"></p>
+
+      <div style="margin-top:50px; padding-top:30px; border-top:1px solid var(--line);">
+        <h2 style="font-size:1.3rem; margin-bottom:16px;">Banned IPs</h2>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+          <input type="text" id="ban-ip-input" placeholder="IP address to ban" style="flex:1; min-width:180px; padding:12px 14px; border-radius:8px; border:1px solid rgba(243,234,216,0.2); background:var(--ink); color:var(--cream); font-family:var(--sans); font-size:0.9rem;">
+          <input type="text" id="ban-reason-input" placeholder="Reason (optional)" style="flex:1; min-width:180px; padding:12px 14px; border-radius:8px; border:1px solid rgba(243,234,216,0.2); background:var(--ink); color:var(--cream); font-family:var(--sans); font-size:0.9rem;">
+          <button type="button" id="ban-ip-submit" class="btn btn-primary" style="padding:10px 20px; font-size:0.85rem;">Ban IP</button>
+        </div>
+
+        <div id="banned-ips-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <p id="banned-ips-empty" style="color:var(--cream-dim); display:none;">No banned IPs.</p>
+      </div>
     </div>
 
   </div>
@@ -88,6 +101,11 @@
   const emptyEl = document.getElementById("admin-empty");
   const refreshBtn = document.getElementById("admin-refresh-btn");
   const chips = document.querySelectorAll(".chip[data-status]");
+  const banIpInput = document.getElementById("ban-ip-input");
+  const banReasonInput = document.getElementById("ban-reason-input");
+  const banIpSubmit = document.getElementById("ban-ip-submit");
+  const bannedListEl = document.getElementById("banned-ips-list");
+  const bannedEmptyEl = document.getElementById("banned-ips-empty");
 
   let adminKey = sessionStorage.getItem("ebs_admin_key") || "";
   let currentStatus = "pending";
@@ -121,6 +139,7 @@
       if (!res.ok) throw new Error(data.error || "Couldn't load submissions.");
       showPanel();
       renderVideos(data.videos || []);
+      loadBannedIps();
     } catch (err) {
       listEl.innerHTML = "";
       emptyEl.textContent = err.message || "Couldn't load submissions.";
@@ -155,10 +174,12 @@
         <span class="story-loc" style="position:static; display:inline-flex;">${escapeHtml(v.location || "")}</span>
         <h3 style="margin:10px 0 4px;">${escapeHtml(v.title || "Untitled")}</h3>
         <div style="color:var(--cream-dim); font-size:0.85rem; margin-bottom:10px;">By ${escapeHtml(v.author || "Anonymous")} &middot; ${escapeHtml(when)} &middot; status: <strong>${escapeHtml(v.status)}</strong></div>
+        ${v.ip ? `<div style="color:var(--cream-dim); font-size:0.8rem; margin-bottom:10px;">IP: <code>${escapeHtml(v.ip)}</code></div>` : ""}
         <p style="color:var(--cream-dim); font-size:0.95rem; margin-bottom:16px;">${escapeHtml(v.caption || "")}</p>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button type="button" class="btn btn-primary admin-action-btn" data-id="${escapeAttr(v.id)}" data-action="approved" style="padding:8px 18px; font-size:0.85rem;">Approve</button>
           <button type="button" class="btn btn-outline admin-action-btn" data-id="${escapeAttr(v.id)}" data-action="rejected" style="padding:8px 18px; font-size:0.85rem; border-color:var(--orange); color:var(--orange);">Reject</button>
+          ${v.ip ? `<button type="button" class="btn btn-outline ban-video-ip-btn" data-ip="${escapeAttr(v.ip)}" style="padding:8px 18px; font-size:0.85rem; border-color:#8a2d2d; color:#e08a8a;">Ban This IP</button>` : ""}
         </div>
       </div>
     </div>`;
@@ -189,6 +210,87 @@
         }
       });
     });
+
+    listEl.querySelectorAll(".ban-video-ip-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const ip = btn.getAttribute("data-ip");
+        if (!window.confirm(`Ban IP ${ip}? They'll be blocked from every part of the API — posting, commenting, logging in, everything.`)) return;
+        await banIp(ip, "Banned from a submission in review");
+      });
+    });
+  }
+
+  async function banIp(ip, reason) {
+    try {
+      const res = await fetch(API_BASE + "/api/admin/banned-ips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ ip, reason: reason || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't ban that IP.");
+      showToast(`Banned ${ip}.`);
+      await loadBannedIps();
+    } catch (err) {
+      showToast(err.message || "Couldn't ban that IP.");
+    }
+  }
+
+  async function loadBannedIps() {
+    if (!bannedListEl) return;
+    try {
+      const res = await fetch(API_BASE + "/api/admin/banned-ips", {
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't load banned IPs.");
+      renderBannedIps(data.bannedIps || []);
+    } catch (err) {
+      // Non-fatal — the main review panel still works even if this fails.
+    }
+  }
+
+  function renderBannedIps(bans) {
+    if (!bans.length) {
+      bannedListEl.innerHTML = "";
+      bannedEmptyEl.style.display = "block";
+      return;
+    }
+    bannedEmptyEl.style.display = "none";
+    bannedListEl.innerHTML = bans.map(bannedIpRowHTML).join("");
+    bannedListEl.querySelectorAll(".unban-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        btn.disabled = true;
+        btn.textContent = "Unbanning…";
+        try {
+          const res = await fetch(API_BASE + "/api/admin/banned-ips/" + encodeURIComponent(id), {
+            method: "DELETE",
+            headers: { "x-admin-key": adminKey },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Couldn't unban.");
+          await loadBannedIps();
+        } catch (err) {
+          showToast(err.message || "Couldn't unban.");
+          btn.disabled = false;
+          btn.textContent = "Unban";
+        }
+      });
+    });
+  }
+
+  function bannedIpRowHTML(b) {
+    let when = "";
+    try { when = new Date(b.created_at).toLocaleDateString(); } catch (e) { when = ""; }
+    return `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--ink); border-radius:8px;">
+      <div>
+        <code>${escapeHtml(b.ip)}</code>
+        <span style="color:var(--cream-dim); font-size:0.8rem; margin-left:10px;">${escapeHtml(b.reason || "No reason given")} &middot; ${escapeHtml(when)}</span>
+      </div>
+      <button type="button" class="btn btn-outline unban-btn" data-id="${escapeAttr(b.id)}" style="padding:6px 14px; font-size:0.8rem;">Unban</button>
+    </div>`;
   }
 
   keySubmit.addEventListener("click", () => {
@@ -211,6 +313,17 @@
   });
 
   if (refreshBtn) refreshBtn.addEventListener("click", loadVideos);
+
+  if (banIpSubmit) {
+    banIpSubmit.addEventListener("click", async () => {
+      const ip = (banIpInput.value || "").trim();
+      if (!ip) { showToast("Enter an IP address to ban."); return; }
+      const reason = (banReasonInput.value || "").trim();
+      await banIp(ip, reason);
+      banIpInput.value = "";
+      banReasonInput.value = "";
+    });
+  }
 
   if (adminKey) {
     loadVideos();
