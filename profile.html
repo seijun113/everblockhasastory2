@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="account.html" class="nav-account-link" id="nav-account-link">Log In</a>
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section id="profile-found" class="section section-dark" style="padding-top:40px; display:none;">
+  <div class="container" style="max-width:900px;">
+
+    <div class="form-card" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <span class="avatar" id="profile-avatar" style="width:56px; height:56px; font-size:1.2rem;"></span>
+        <div>
+          <h1 id="profile-name" style="margin:0; font-size:1.6rem;">—</h1>
+          <p id="profile-joined" style="color:var(--cream-dim); margin:4px 0 0;"></p>
+          <p style="color:var(--cream-dim); margin:6px 0 0; font-size:0.9rem;">
+            <strong id="profile-follower-count">0</strong> followers &middot; <strong id="profile-following-count">0</strong> following
+          </p>
+        </div>
+      </div>
+      <button type="button" id="follow-btn" class="btn btn-primary" style="padding:10px 22px;">Follow</button>
+    </div>
+
+    <div style="margin-top:40px;">
+      <h2 style="font-size:1.4rem;">Stories</h2>
+      <p id="profile-stories-empty" style="color:var(--cream-dim); display:none;">No stories posted yet.</p>
+      <div id="profile-stories-grid" class="story-grid" style="margin-top:20px;"></div>
+    </div>
+
+  </div>
+</section>
+
+<section id="profile-not-found" class="section section-dark" style="display:none;">
+  <div class="container" style="text-align:center; padding:40px 0 60px;">
+    <h1>Account Not Found</h1>
+    <p style="color:var(--cream-dim);">This profile doesn't exist, or the link is incorrect.</p>
+    <a href="stories.html" class="btn btn-primary">Browse All Stories</a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+<script>
+  (async function () {
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("id");
+    const foundEl = document.getElementById("profile-found");
+    const notFoundEl = document.getElementById("profile-not-found");
+
+    if (!userId) {
+      notFoundEl.style.display = "block";
+      return;
+    }
+
+    try {
+      const res = await apiFetch("/api/users/" + encodeURIComponent(userId));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Account not found.");
+
+      document.title = (data.profile.name || "Profile") + " — Every Block Has a Story";
+      document.getElementById("profile-name").textContent = data.profile.name || "Anonymous";
+      const initials = (data.profile.name || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
+      document.getElementById("profile-avatar").textContent = initials;
+
+      let joined = "";
+      try { joined = new Date(data.profile.created_at).toLocaleDateString(); } catch (e) { joined = ""; }
+      document.getElementById("profile-joined").textContent = joined ? "Joined " + joined : "";
+
+      document.getElementById("profile-follower-count").textContent = data.followerCount || 0;
+      document.getElementById("profile-following-count").textContent = data.followingCount || 0;
+
+      const followBtn = document.getElementById("follow-btn");
+      if (data.isSelf) {
+        followBtn.style.display = "none";
+      } else {
+        let following = !!data.isFollowing;
+        function renderFollow() {
+          followBtn.textContent = following ? "Following" : "Follow";
+          followBtn.classList.toggle("engagement-active", following);
+        }
+        renderFollow();
+        followBtn.addEventListener("click", async () => {
+          const { access } = getTokens();
+          if (!access) { showToast("Log in to follow accounts."); return; }
+          followBtn.disabled = true;
+          try {
+            const res2 = await apiFetch("/api/users/" + encodeURIComponent(userId) + "/follow", { method: "POST" });
+            const data2 = await res2.json();
+            if (!res2.ok) throw new Error(data2.error || "Couldn't update follow.");
+            following = data2.following;
+            document.getElementById("profile-follower-count").textContent = data2.followerCount || 0;
+            renderFollow();
+          } catch (err) {
+            showToast(err.message || "Couldn't update follow.");
+          } finally {
+            followBtn.disabled = false;
+          }
+        });
+      }
+
+      const grid = document.getElementById("profile-stories-grid");
+      const emptyEl = document.getElementById("profile-stories-empty");
+      const videos = (data.videos || []).map(videoToStoryShape);
+      if (!videos.length) {
+        if (emptyEl) emptyEl.style.display = "block";
+      } else {
+        grid.innerHTML = videos.map(storyCardHTML).join("");
+      }
+
+      foundEl.style.display = "block";
+    } catch (err) {
+      notFoundEl.style.display = "block";
+    }
+  })();
+</script>
+</body>
+</html>
