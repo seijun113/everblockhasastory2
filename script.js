@@ -292,6 +292,53 @@ async function initCountryZoom() {
 
   let activeId = null;
 
+  // Multi-part countries (bundled into a <g>) sometimes include far-flung
+  // overseas territories drawn as scattered specks alongside the mainland
+  // (e.g. France's Pacific/Caribbean/Indian Ocean territories bundled with
+  // mainland France) — left alone, that inflates the bounding box and
+  // "zooms in" on nearly the whole map instead of the country. Rendering
+  // each part to a tiny offscreen canvas and checking how much of its own
+  // bounding box it actually fills tells a real landmass (mostly filled)
+  // apart from scattered specks (a huge box that's almost all empty), so
+  // those specks can be skipped when choosing which part to frame on.
+  function pathFillRatio(pathEl, bbox) {
+    const d = pathEl.getAttribute("d");
+    if (!d || bbox.width <= 0 || bbox.height <= 0) return 1;
+    const SAMPLE = 32;
+    const canvas = document.createElement("canvas");
+    canvas.width = SAMPLE;
+    canvas.height = SAMPLE;
+    const ctx = canvas.getContext("2d");
+    let path2d;
+    try {
+      path2d = new Path2D(d);
+    } catch (e) {
+      return 1;
+    }
+    ctx.save();
+    ctx.scale(SAMPLE / bbox.width, SAMPLE / bbox.height);
+    ctx.translate(-bbox.x, -bbox.y);
+    ctx.fill(path2d);
+    ctx.restore();
+    const data = ctx.getImageData(0, 0, SAMPLE, SAMPLE).data;
+    let filled = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) filled++;
+    return filled / (SAMPLE * SAMPLE);
+  }
+
+  function boxForUnit(unit) {
+    const children = unit.tagName.toLowerCase() === "g" ? [...unit.children].filter((c) => c.tagName === "path") : [];
+    if (children.length < 2) return unit.getBBox();
+    const parts = children.map((child) => {
+      const bbox = child.getBBox();
+      return { bbox, ratio: pathFillRatio(child, bbox), area: bbox.width * bbox.height };
+    });
+    const solid = parts.filter((p) => p.ratio >= 0.02);
+    const pool = solid.length ? solid : parts;
+    pool.sort((a, b) => b.area - a.area);
+    return pool[0].bbox;
+  }
+
   function resetZoom() {
     zoomLayer.style.transform = "";
     mapEl.classList.remove("is-zoomed");
@@ -300,7 +347,7 @@ async function initCountryZoom() {
   }
 
   function zoomTo(unit) {
-    const box = svgBoxToMapPercent(unit.getBBox());
+    const box = svgBoxToMapPercent(boxForUnit(unit));
     const centerLeft = box.left + box.width / 2;
     const centerTop = box.top + box.height / 2;
     // Scale so the country's longer side fills ~55% of the frame, clamped
