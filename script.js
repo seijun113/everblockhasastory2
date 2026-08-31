@@ -140,16 +140,45 @@ function videoToStoryShape(v) {
 
 // ---------- Map pin placement ----------
 // Converts real-world lat/lng into a left%/top% position on the site's
-// stylized worldmap-base image. This is a plain equirectangular projection
-// (left = longitude, top = latitude) with a small scale + margin correction
-// fitted to match the 8 hand-placed seed pins already in map.html, so
-// auto-placed pins line up visually with the existing ones.
+// stylized worldmap-base image.
+//
+// The background is the world-map.min.svg mask (viewBox below), fit into
+// the 6%-inset .worldmap-base box via `mask-size: contain`. That SVG's own
+// aspect ratio (~1.71) is wider than the box it sits in (~1.33, inherited
+// from .hero-map's 4:3 ratio), so the browser fits it to the full WIDTH and
+// letterboxes empty space on the TOP and BOTTOM — meaning the horizontal
+// and vertical axes need different scale/margin values, not the same one.
+// Using one shared value for both (the old approach) pushed everything too
+// far north vertically, e.g. New York-latitude pins landing up in Canada.
+//
+// The svgX/svgY formulas below were fit by pulling the actual SVG, reading
+// real bounding boxes for several compact, well-placed countries (Singapore,
+// Iceland, UK, Egypt, South Africa, Australia), and least-squares-fitting
+// those against their known real-world lat/lng — so this reflects the
+// asset's actual (slightly cropped, non-±180/±90) coordinate range rather
+// than assuming a textbook equirectangular projection.
 function latLngToMapPercent(lat, lng) {
-  const rawLeft = ((lng + 180) / 360) * 100;
-  const rawTop = ((90 - lat) / 180) * 100;
-  const left = 0.88 * rawLeft + 6;
-  const top = 0.88 * rawTop + 6;
-  return { left, top };
+  const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
+  const svgX = 2.3272 * lng + 411.09;
+  const svgY = -2.8281 * lat + 534.77;
+
+  // Fraction across the SVG's own drawn artwork (0..1 for on-map locations;
+  // can go slightly outside that range for far-Pacific/polar spots this
+  // particular map doesn't draw — clamped below so a pin never renders
+  // totally off the visible card).
+  const fracX = (svgX - VB.minX) / VB.width;
+  const fracY = (svgY - VB.minY) / VB.height;
+
+  // Horizontal: no letterboxing (the SVG fills the box's full width).
+  const left = 6 + fracX * 88;
+  // Vertical: letterboxed — the rendered map only occupies the middle
+  // ~68.6% of .worldmap-base's height, offset by ~15.7% from the top.
+  const top = 15.68 + fracY * 68.64;
+
+  return {
+    left: Math.min(97, Math.max(3, left)),
+    top: Math.min(97, Math.max(3, top)),
+  };
 }
 
 // Adds a pin to the map for every real posted story that has coordinates.
