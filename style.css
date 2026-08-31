@@ -282,18 +282,27 @@ p { margin: 0 0 1em; }
   transform-origin: 0 0;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.continent-hotspot {
+.country-hit-layer {
   position: absolute;
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: background 0.2s ease;
+  left: 6%;
+  top: 15.68%;
+  width: 88%;
+  height: 68.64%;
+  pointer-events: none;
 }
-.continent-hotspot:hover,
-.continent-hotspot.active {
-  background: rgba(243, 234, 216, 0.08);
+.country-hit-layer .country-hit {
+  fill: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: fill 0.2s ease;
+}
+.country-hit-layer .country-hit:hover,
+.country-hit-layer .country-hit.active {
+  fill: rgba(243, 234, 216, 0.22);
+}
+.country-hit-layer .country-hit:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 1px;
 }
 .map-zoom-reset {
   position: absolute;
