@@ -184,9 +184,17 @@ function latLngToMapPercent(lat, lng) {
 // Adds a pin to the map for every real posted story that has coordinates.
 // Seed demo stories already have their own hand-placed pins directly in
 // map.html, so only real (v_...) stories are added here to avoid duplicates.
+//
+// Always clears out any pins THIS function previously added (tagged with
+// data-auto-pin) before drawing the current set. Without this, calling it
+// twice — e.g. once on page load and again after someone deletes a story —
+// would leave the deleted story's pin behind and pile a duplicate of every
+// surviving pin on top of itself.
 async function renderMapPins() {
   const mapEl = document.querySelector(".hero-map");
   if (!mapEl) return;
+  mapEl.querySelectorAll(".map-pin[data-auto-pin]").forEach((el) => el.remove());
+
   const stories = await API.listStories();
   const withCoords = stories.filter(
     (s) => String(s.id).startsWith("v_") && typeof s.lat === "number" && typeof s.lng === "number"
@@ -197,7 +205,7 @@ async function renderMapPins() {
       const hue = s.hue || 30;
       const color = `hsl(${hue} 40% 45%)`;
       const title = `${s.location || ""} — ${s.title || "Untitled Story"}`;
-      return `<a class="map-pin" href="story.html?id=${encodeURIComponent(s.id)}" style="--pc:${color}; left:${left.toFixed(1)}%; top:${top.toFixed(1)}%;" title="${escapeAttr(title)}"></a>`;
+      return `<a class="map-pin" data-auto-pin="1" href="story.html?id=${encodeURIComponent(s.id)}" style="--pc:${color}; left:${left.toFixed(1)}%; top:${top.toFixed(1)}%;" title="${escapeAttr(title)}"></a>`;
     })
     .join("");
   if (pinsHTML) {
