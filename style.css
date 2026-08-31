@@ -259,6 +259,7 @@ p { margin: 0 0 1em; }
   box-shadow: 0 3px 8px rgba(0,0,0,0.45);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  pointer-events: auto;
 }
 .map-pin:hover {
   transform: translate(-50%, -100%) rotate(-45deg) scale(1.25);
@@ -272,6 +273,48 @@ p { margin: 0 0 1em; }
   border-radius: 50%;
   background: var(--ink);
 }
+
+/* Continent click-to-zoom (map.html's larger map only) */
+.map-zoom-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.continent-hotspot {
+  position: absolute;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.2s ease;
+}
+.continent-hotspot:hover,
+.continent-hotspot.active {
+  background: rgba(243, 234, 216, 0.08);
+}
+.map-zoom-reset {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-family: var(--sans);
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(243, 234, 216, 0.35);
+  background: rgba(20, 20, 15, 0.75);
+  color: var(--cream);
+  cursor: pointer;
+}
+.map-zoom-reset:hover { border-color: var(--cream); }
+.hero-map-interactive.is-zoomed .map-zoom-reset { display: inline-flex; }
 .hero-tagline {
   position: absolute;
   top: 14px; right: 18px;
