@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   markActiveNav();
   renderAllStoryGrids();
-  renderMapPins().then(initContinentZoom);
+  renderMapPins().then(initCountryZoom);
   wireCarousel();
   initShareGate();
   initShareForm();
@@ -217,54 +217,95 @@ async function renderMapPins() {
   }
 }
 
-// ---------- Continent click-to-zoom (map.html's larger interactive map) ----------
-// Rough real-world bounding boxes — approximate on purpose, this is a "zoom
-// to the general region" feature, not precise cartography. Uses the same
-// latLngToMapPercent() calibration as the pins so hotspots line up with
-// where each continent is actually drawn.
-const CONTINENTS = [
-  { id: "north-america", label: "North America", latMin: 15, latMax: 75, lngMin: -170, lngMax: -50 },
-  { id: "south-america", label: "South America", latMin: -56, latMax: 13, lngMin: -82, lngMax: -34 },
-  { id: "europe", label: "Europe", latMin: 36, latMax: 71, lngMin: -25, lngMax: 40 },
-  { id: "africa", label: "Africa", latMin: -35, latMax: 38, lngMin: -18, lngMax: 52 },
-  { id: "asia", label: "Asia", latMin: -11, latMax: 77, lngMin: 40, lngMax: 150 },
-  { id: "oceania", label: "Oceania", latMin: -47, latMax: -1, lngMin: 110, lngMax: 179 },
-];
+// ---------- Country click-to-zoom (map.html's larger interactive map) ----------
+// Clicking a country zooms to its exact shape rather than a hand-drawn
+// region box. This works by pulling the same SVG the map's CSS mask uses,
+// laying an invisible copy of its real country paths on top for hit
+// testing, and reading each one's actual bounding box at click time — so
+// the zoom always frames the real country outline, with no manually
+// maintained lat/lng boxes to keep in sync.
+const COUNTRY_MAP_SVG_URL = "https://raw.githubusercontent.com/cablop/simple-world-map-by-continents/master/world-map.min.svg";
 
-function initContinentZoom() {
+// ISO 3166-1 alpha-2 -> display name, for every country/territory this
+// particular map draws (generated from the map's own path ids).
+const COUNTRY_NAMES = {"_somaliland":"Somaliland","ae":"United Arab Emirates","af":"Afghanistan","al":"Albania","am":"Armenia","ao":"Angola","ar":"Argentina","at":"Austria","au":"Australia","az":"Azerbaijan","ba":"Bosnia & Herzegovina","bd":"Bangladesh","be":"Belgium","bf":"Burkina Faso","bg":"Bulgaria","bi":"Burundi","bj":"Benin","bn":"Brunei","bo":"Bolivia","br":"Brazil","bs":"Bahamas","bt":"Bhutan","bw":"Botswana","by":"Belarus","bz":"Belize","ca":"Canada","cd":"DR Congo","cf":"Central African Republic","cg":"Congo","ch":"Switzerland","ci":"Côte d’Ivoire","cl":"Chile","cm":"Cameroon","cn":"China","co":"Colombia","cr":"Costa Rica","cu":"Cuba","cv":"Cape Verde","cy":"Cyprus","cz":"Czech Republic","de":"Germany","dk":"Denmark","dj":"Djibouti","dm":"Dominica","do":"Dominican Republic","dz":"Algeria","ec":"Ecuador","ee":"Estonia","eg":"Egypt","er":"Eritrea","es":"Spain","et":"Ethiopia","fi":"Finland","fk":"Falkland Islands","fr":"France","ga":"Gabon","gb":"United Kingdom","ge":"Georgia","gh":"Ghana","gl":"Greenland","gm":"Gambia","gn":"Guinea","gq":"Equatorial Guinea","gr":"Greece","gt":"Guatemala","gw":"Guinea-Bissau","gy":"Guyana","hn":"Honduras","hr":"Croatia","ht":"Haiti","hu":"Hungary","id":"Indonesia","ie":"Ireland","il":"Israel","in":"India","iq":"Iraq","ir":"Iran","is":"Iceland","it":"Italy","jm":"Jamaica","jo":"Jordan","jp":"Japan","ke":"Kenya","kg":"Kyrgyzstan","kh":"Cambodia","km":"Comoros","kp":"North Korea","kr":"South Korea","kw":"Kuwait","kz":"Kazakhstan","la":"Laos","lb":"Lebanon","lc":"St. Lucia","lk":"Sri Lanka","lr":"Liberia","ls":"Lesotho","lt":"Lithuania","lu":"Luxembourg","lv":"Latvia","ly":"Libya","ma":"Morocco","md":"Moldova","me":"Montenegro","mg":"Madagascar","mk":"North Macedonia","ml":"Mali","mm":"Myanmar (Burma)","mn":"Mongolia","mr":"Mauritania","mt":"Malta","mu":"Mauritius","mv":"Maldives","mw":"Malawi","mx":"Mexico","my":"Malaysia","mz":"Mozambique","na":"Namibia","nc":"New Caledonia","ne":"Niger","ng":"Nigeria","ni":"Nicaragua","nl":"Netherlands","no":"Norway","np":"Nepal","nz":"New Zealand","om":"Oman","pa":"Panama","pe":"Peru","pg":"Papua New Guinea","ph":"Philippines","pk":"Pakistan","pl":"Poland","pr":"Puerto Rico","pt":"Portugal","py":"Paraguay","qa":"Qatar","ro":"Romania","rs":"Serbia","ru":"Russia","rw":"Rwanda","sa":"Saudi Arabia","sb":"Solomon Islands","sc":"Seychelles","sd":"Sudan","se":"Sweden","sg":"Singapore","si":"Slovenia","sk":"Slovakia","sl":"Sierra Leone","sn":"Senegal","so":"Somalia","sr":"Suriname","ss":"South Sudan","st":"São Tomé & Príncipe","sv":"El Salvador","sy":"Syria","sz":"Eswatini","td":"Chad","tg":"Togo","th":"Thailand","tj":"Tajikistan","tm":"Turkmenistan","tn":"Tunisia","tr":"Türkiye","tt":"Trinidad & Tobago","tw":"Taiwan","tz":"Tanzania","ua":"Ukraine","ug":"Uganda","us":"United States","uy":"Uruguay","uz":"Uzbekistan","vc":"St. Vincent & Grenadines","ve":"Venezuela","vn":"Vietnam","vu":"Vanuatu","ye":"Yemen","za":"South Africa","zm":"Zambia","zw":"Zimbabwe"};
+
+// Converts a bounding box from the map SVG's own coordinate space (the
+// same space latLngToMapPercent's svgX/svgY land in) into left/top/
+// width/height percentages of the .hero-map box, using the same
+// contain-fit geometry as the pins (6% inset/88% width; ~15.68% offset/
+// 68.64% height, from the SVG's real letterboxed aspect ratio).
+function svgBoxToMapPercent(box) {
+  const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
+  const fracX0 = (box.x - VB.minX) / VB.width;
+  const fracX1 = (box.x + box.width - VB.minX) / VB.width;
+  const fracY0 = (box.y - VB.minY) / VB.height;
+  const fracY1 = (box.y + box.height - VB.minY) / VB.height;
+  const left0 = 6 + fracX0 * 88;
+  const left1 = 6 + fracX1 * 88;
+  const top0 = 15.68 + fracY0 * 68.64;
+  const top1 = 15.68 + fracY1 * 68.64;
+  return {
+    left: Math.min(left0, left1),
+    top: Math.min(top0, top1),
+    width: Math.abs(left1 - left0),
+    height: Math.abs(top1 - top0),
+  };
+}
+
+async function initCountryZoom() {
   const mapEl = document.querySelector(".hero-map-interactive");
   if (!mapEl) return; // not on map.html
   const zoomLayer = mapEl.querySelector(".map-zoom-layer");
   const resetBtn = mapEl.querySelector(".map-zoom-reset");
   if (!zoomLayer) return;
 
-  let activeId = null;
-
-  function continentBox(c) {
-    const topLeft = latLngToMapPercent(c.latMax, c.lngMin);
-    const bottomRight = latLngToMapPercent(c.latMin, c.lngMax);
-    return {
-      left: Math.min(topLeft.left, bottomRight.left),
-      top: Math.min(topLeft.top, bottomRight.top),
-      width: Math.abs(bottomRight.left - topLeft.left),
-      height: Math.abs(bottomRight.top - topLeft.top),
-    };
+  let svgText;
+  try {
+    const res = await fetch(COUNTRY_MAP_SVG_URL, { cache: "force-cache" });
+    svgText = await res.text();
+  } catch (e) {
+    return; // no country hit-layer if the map source can't be fetched; base map + pins still work fine
   }
+
+  const parsed = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  const source = parsed.documentElement;
+  if (!source || source.querySelector("parsererror")) return;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const overlay = document.createElementNS(svgNS, "svg");
+  overlay.setAttribute("viewBox", source.getAttribute("viewBox"));
+  overlay.setAttribute("preserveAspectRatio", "none");
+  overlay.classList.add("country-hit-layer");
+
+  // Each top-level <path id="xx"> or <g id="xx"> (multi-part countries
+  // like archipelagos are grouped) becomes one clickable unit.
+  [...source.children]
+    .filter((el) => el.tagName === "path" || el.tagName === "g")
+    .forEach((el) => {
+      const clone = document.importNode(el, true);
+      clone.classList.add("country-hit");
+      overlay.appendChild(clone);
+    });
+
+  zoomLayer.appendChild(overlay);
+
+  let activeId = null;
 
   function resetZoom() {
     zoomLayer.style.transform = "";
     mapEl.classList.remove("is-zoomed");
     activeId = null;
-    mapEl.querySelectorAll(".continent-hotspot.active").forEach((el) => el.classList.remove("active"));
+    overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
   }
 
-  function zoomTo(continent) {
-    const box = continentBox(continent);
+  function zoomTo(unit) {
+    const box = svgBoxToMapPercent(unit.getBBox());
     const centerLeft = box.left + box.width / 2;
     const centerTop = box.top + box.height / 2;
-    // Scale so the continent's longer side fills ~78% of the frame,
-    // clamped so nothing zooms in so far it looks broken or barely moves.
-    const scale = Math.min(4.5, Math.max(1.6, 78 / Math.max(box.width, box.height, 1)));
+    // Scale so the country's longer side fills ~55% of the frame, clamped
+    // so tiny nations don't zoom in absurdly far and huge ones still move.
+    const scale = Math.min(10, Math.max(1.8, 55 / Math.max(box.width, box.height, 1)));
     const ox = centerLeft / 100;
     const oy = centerTop / 100;
     // transform-origin is fixed at 0,0 (see CSS), so translate the scaled
@@ -275,25 +316,34 @@ function initContinentZoom() {
     mapEl.classList.add("is-zoomed");
   }
 
-  const hotspotsHTML = CONTINENTS.map((c) => {
-    const box = continentBox(c);
-    return `<button type="button" class="continent-hotspot" data-continent="${c.id}" title="${escapeAttr(c.label)}" aria-label="Zoom to ${escapeAttr(c.label)}" style="left:${box.left.toFixed(1)}%; top:${box.top.toFixed(1)}%; width:${box.width.toFixed(1)}%; height:${box.height.toFixed(1)}%;"></button>`;
-  }).join("");
-  mapEl.insertAdjacentHTML("beforeend", hotspotsHTML);
+  overlay.querySelectorAll(".country-hit").forEach((unit) => {
+    const id = unit.getAttribute("id");
+    const label = COUNTRY_NAMES[id] || id;
 
-  mapEl.querySelectorAll(".continent-hotspot").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-continent");
+    unit.setAttribute("role", "button");
+    unit.setAttribute("tabindex", "0");
+    unit.setAttribute("aria-label", `Zoom to ${label}`);
+    const titleEl = document.createElementNS(svgNS, "title");
+    titleEl.textContent = label;
+    unit.insertBefore(titleEl, unit.firstChild);
+
+    function toggle() {
       if (activeId === id) {
         resetZoom();
         return;
       }
-      const continent = CONTINENTS.find((c) => c.id === id);
-      if (!continent) return;
-      mapEl.querySelectorAll(".continent-hotspot.active").forEach((el) => el.classList.remove("active"));
-      btn.classList.add("active");
+      overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
+      unit.classList.add("active");
       activeId = id;
-      zoomTo(continent);
+      zoomTo(unit);
+    }
+
+    unit.addEventListener("click", toggle);
+    unit.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
     });
   });
 
