@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   markActiveNav();
   renderAllStoryGrids();
-  renderMapPins();
+  renderMapPins().then(initContinentZoom);
   wireCarousel();
   initShareGate();
   initShareForm();
@@ -193,7 +193,11 @@ function latLngToMapPercent(lat, lng) {
 async function renderMapPins() {
   const mapEl = document.querySelector(".hero-map");
   if (!mapEl) return;
-  mapEl.querySelectorAll(".map-pin[data-auto-pin]").forEach((el) => el.remove());
+  // On the interactive map page, pins live inside .map-zoom-layer so they
+  // zoom/pan together with the landmass. Pages without that wrapper (the
+  // homepage's small decorative map) fall back to the old behavior.
+  const pinTarget = mapEl.querySelector(".map-zoom-layer") || mapEl;
+  pinTarget.querySelectorAll(".map-pin[data-auto-pin]").forEach((el) => el.remove());
 
   const stories = await API.listStories();
   const withCoords = stories.filter(
@@ -209,8 +213,91 @@ async function renderMapPins() {
     })
     .join("");
   if (pinsHTML) {
-    mapEl.insertAdjacentHTML("beforeend", pinsHTML);
+    pinTarget.insertAdjacentHTML("beforeend", pinsHTML);
   }
+}
+
+// ---------- Continent click-to-zoom (map.html's larger interactive map) ----------
+// Rough real-world bounding boxes — approximate on purpose, this is a "zoom
+// to the general region" feature, not precise cartography. Uses the same
+// latLngToMapPercent() calibration as the pins so hotspots line up with
+// where each continent is actually drawn.
+const CONTINENTS = [
+  { id: "north-america", label: "North America", latMin: 15, latMax: 75, lngMin: -170, lngMax: -50 },
+  { id: "south-america", label: "South America", latMin: -56, latMax: 13, lngMin: -82, lngMax: -34 },
+  { id: "europe", label: "Europe", latMin: 36, latMax: 71, lngMin: -25, lngMax: 40 },
+  { id: "africa", label: "Africa", latMin: -35, latMax: 38, lngMin: -18, lngMax: 52 },
+  { id: "asia", label: "Asia", latMin: -11, latMax: 77, lngMin: 40, lngMax: 150 },
+  { id: "oceania", label: "Oceania", latMin: -47, latMax: -1, lngMin: 110, lngMax: 179 },
+];
+
+function initContinentZoom() {
+  const mapEl = document.querySelector(".hero-map-interactive");
+  if (!mapEl) return; // not on map.html
+  const zoomLayer = mapEl.querySelector(".map-zoom-layer");
+  const resetBtn = mapEl.querySelector(".map-zoom-reset");
+  if (!zoomLayer) return;
+
+  let activeId = null;
+
+  function continentBox(c) {
+    const topLeft = latLngToMapPercent(c.latMax, c.lngMin);
+    const bottomRight = latLngToMapPercent(c.latMin, c.lngMax);
+    return {
+      left: Math.min(topLeft.left, bottomRight.left),
+      top: Math.min(topLeft.top, bottomRight.top),
+      width: Math.abs(bottomRight.left - topLeft.left),
+      height: Math.abs(bottomRight.top - topLeft.top),
+    };
+  }
+
+  function resetZoom() {
+    zoomLayer.style.transform = "";
+    mapEl.classList.remove("is-zoomed");
+    activeId = null;
+    mapEl.querySelectorAll(".continent-hotspot.active").forEach((el) => el.classList.remove("active"));
+  }
+
+  function zoomTo(continent) {
+    const box = continentBox(continent);
+    const centerLeft = box.left + box.width / 2;
+    const centerTop = box.top + box.height / 2;
+    // Scale so the continent's longer side fills ~78% of the frame,
+    // clamped so nothing zooms in so far it looks broken or barely moves.
+    const scale = Math.min(4.5, Math.max(1.6, 78 / Math.max(box.width, box.height, 1)));
+    const ox = centerLeft / 100;
+    const oy = centerTop / 100;
+    // transform-origin is fixed at 0,0 (see CSS), so translate the scaled
+    // center point back to the visual middle of the frame ourselves.
+    const tx = (0.5 - ox * scale) * 100;
+    const ty = (0.5 - oy * scale) * 100;
+    zoomLayer.style.transform = `translate(${tx}%, ${ty}%) scale(${scale})`;
+    mapEl.classList.add("is-zoomed");
+  }
+
+  const hotspotsHTML = CONTINENTS.map((c) => {
+    const box = continentBox(c);
+    return `<button type="button" class="continent-hotspot" data-continent="${c.id}" title="${escapeAttr(c.label)}" aria-label="Zoom to ${escapeAttr(c.label)}" style="left:${box.left.toFixed(1)}%; top:${box.top.toFixed(1)}%; width:${box.width.toFixed(1)}%; height:${box.height.toFixed(1)}%;"></button>`;
+  }).join("");
+  mapEl.insertAdjacentHTML("beforeend", hotspotsHTML);
+
+  mapEl.querySelectorAll(".continent-hotspot").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-continent");
+      if (activeId === id) {
+        resetZoom();
+        return;
+      }
+      const continent = CONTINENTS.find((c) => c.id === id);
+      if (!continent) return;
+      mapEl.querySelectorAll(".continent-hotspot.active").forEach((el) => el.classList.remove("active"));
+      btn.classList.add("active");
+      activeId = id;
+      zoomTo(continent);
+    });
+  });
+
+  if (resetBtn) resetBtn.addEventListener("click", resetZoom);
 }
 
 let API_OFFLINE_WARNED = false;
