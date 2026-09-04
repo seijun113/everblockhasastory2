@@ -493,12 +493,31 @@ async function initCountryZoom() {
     // wherever their real coordinates land, typically clipped by
     // .hero-map's overflow:hidden), matching how the country zoom itself
     // only frames the mainland without hiding the rest of the country.
+    //
+    // A degree of longitude and a degree of latitude are not the same
+    // physical distance — longitude lines squeeze together away from the
+    // equator by a factor of cos(latitude). Stretching lngSpan and latSpan
+    // independently to fill countryBox (the old approach) ignores that,
+    // so any country wide enough for the difference to matter (the US
+    // being the clearest case) came out visibly warped: states nearer the
+    // box's edges drifted from their real shape/position. Instead, scale
+    // both axes by the SAME factor — derived from the core's center
+    // latitude — so relative shape is preserved, and center the (possibly
+    // letterboxed) result within countryBox.
+    const centerLat = (latMin + latMax) / 2;
+    const cosLat = Math.cos((centerLat * Math.PI) / 180) || 1;
+    const physWidth = lngSpan * cosLat;
+    const physHeight = latSpan;
+    const scale = Math.min(countryBox.width / physWidth, countryBox.height / physHeight);
+    const renderedWidth = physWidth * scale;
+    const renderedHeight = physHeight * scale;
+    const offsetX = countryBox.left + (countryBox.width - renderedWidth) / 2;
+    const offsetY = countryBox.top + (countryBox.height - renderedHeight) / 2;
+
     function project(lng, lat) {
-      const fracX = (lng - lngMin) / lngSpan;
-      const fracY = 1 - (lat - latMin) / latSpan; // lat increases north; screen Y increases down
       return {
-        left: countryBox.left + fracX * countryBox.width,
-        top: countryBox.top + fracY * countryBox.height,
+        left: offsetX + (lng - lngMin) * cosLat * scale,
+        top: offsetY + (latMax - lat) * scale, // lat increases north; screen Y increases down
       };
     }
 
