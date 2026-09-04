@@ -506,18 +506,31 @@ async function initCountryZoom() {
     // letterboxed) result within countryBox.
     const centerLat = (latMin + latMax) / 2;
     const cosLat = Math.cos((centerLat * Math.PI) / 180) || 1;
-    const physWidth = lngSpan * cosLat;
-    const physHeight = latSpan;
-    const scale = Math.min(countryBox.width / physWidth, countryBox.height / physHeight);
-    const renderedWidth = physWidth * scale;
-    const renderedHeight = physHeight * scale;
+
+    // Pure proportional (shape-accurate) scale keeps states the right
+    // relative shape but, for a wide/short country whose illustrated
+    // outline isn't drawn to a real projection (the US box is much
+    // taller, relative to its width, than any real projection of the
+    // country would produce), leaves visible empty margin inside that
+    // outline. Pure fill-the-box (independent lng/lat scale, no cosLat)
+    // closes that gap but reintroduces shape warping. BLEND is how far
+    // to lean toward filling the box: 0 = pure shape accuracy, 1 = pure
+    // fill (the old behavior). 0.5 splits the difference.
+    const BLEND = 0.5;
+    const scaleXFill = countryBox.width / lngSpan;
+    const scaleYFill = countryBox.height / latSpan;
+    const scaleUniform = Math.min(countryBox.width / (lngSpan * cosLat), countryBox.height / latSpan);
+    const lngScale = Math.pow(scaleXFill, BLEND) * Math.pow(cosLat * scaleUniform, 1 - BLEND);
+    const latScale = Math.pow(scaleYFill, BLEND) * Math.pow(scaleUniform, 1 - BLEND);
+    const renderedWidth = lngSpan * lngScale;
+    const renderedHeight = latSpan * latScale;
     const offsetX = countryBox.left + (countryBox.width - renderedWidth) / 2;
     const offsetY = countryBox.top + (countryBox.height - renderedHeight) / 2;
 
     function project(lng, lat) {
       return {
-        left: offsetX + (lng - lngMin) * cosLat * scale,
-        top: offsetY + (latMax - lat) * scale, // lat increases north; screen Y increases down
+        left: offsetX + (lng - lngMin) * lngScale,
+        top: offsetY + (latMax - lat) * latScale, // lat increases north; screen Y increases down
       };
     }
 
