@@ -221,23 +221,18 @@ p { margin: 0 0 1em; }
 
 .hero-map {
   position: relative;
-  aspect-ratio: 4/3;
+  aspect-ratio: 3000 / 1705;
   border-radius: var(--radius);
   overflow: hidden;
 }
 .hero-map svg { width: 100%; height: 100%; }
 .worldmap-base {
   position: absolute;
-  inset: 6%;
-  background: linear-gradient(100deg, var(--gold) 0%, var(--olive-light) 24%, var(--olive) 46%, #7a4a2a 68%, var(--gold) 100%);
-  -webkit-mask-image: url('https://raw.githubusercontent.com/cablop/simple-world-map-by-continents/master/world-map.min.svg');
-  mask-image: url('https://raw.githubusercontent.com/cablop/simple-world-map-by-continents/master/world-map.min.svg');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  inset: 0;
+  background-image: url('/world-map.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 .map-credit {
   position: absolute;
@@ -284,10 +279,9 @@ p { margin: 0 0 1em; }
 }
 .hero-map .country-hit-layer {
   position: absolute;
-  left: 6%;
-  top: 15.68%;
-  width: 88%;
-  height: 68.64%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 .country-hit-layer .country-hit {
