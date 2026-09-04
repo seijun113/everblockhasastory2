@@ -346,6 +346,7 @@ p { margin: 0 0 1em; }
 }
 .map-zoom-reset:hover { border-color: var(--cream); }
 .hero-map-interactive.is-zoomed .map-zoom-reset { display: inline-flex; }
+.map-zoom-reset.visible { display: inline-flex; }
 .hero-tagline {
   position: absolute;
   top: 14px; right: 18px;
