@@ -401,48 +401,118 @@ async function initCountryZoom() {
     mapEl.classList.add("is-zoomed");
   }
 
-  function zoomTo(unit) {
-    zoomToBox(svgBoxToMapPercent(boxForUnit(unit)));
+  function countryBoxPercent(unit) {
+    return svgBoxToMapPercent(boxForUnit(unit));
   }
 
-  // Turns one ring of [lng, lat] points (already simplified, real-world
-  // degrees) into an SVG path's "d" data, reusing latLngToMapPercent so
-  // every point lands exactly where the pins/country outlines would.
-  function ringToPathData(ring) {
-    return (
-      "M " +
-      ring
-        .map(([lng, lat]) => {
-          const { left, top } = latLngToMapPercent(lat, lng);
-          return `${left.toFixed(2)} ${top.toFixed(2)}`;
-        })
-        .join(" L ") +
-      " Z"
-    );
+  // The inverse of latLngToMapPercent — only needs to be roughly right,
+  // since it's used purely to decide which states are "mainland" (see
+  // below), not for final pixel placement.
+  function percentToApproxLatLng(left, top) {
+    const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
+    const fracX = (left - 6) / 88;
+    const fracY = (top - 15.68) / 68.64;
+    const svgX = fracX * VB.width + VB.minX;
+    const svgY = fracY * VB.height + VB.minY;
+    return [(svgX - 411.09) / 2.3272, (534.77 - svgY) / 2.8281];
   }
 
-  function stateBoxFromRings(rings) {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    rings.forEach((ring) =>
-      ring.forEach(([lng, lat]) => {
-        const { left, top } = latLngToMapPercent(lat, lng);
-        if (left < minX) minX = left;
-        if (left > maxX) maxX = left;
-        if (top < minY) minY = top;
-        if (top > maxY) maxY = top;
-      })
-    );
-    return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+  function centroidOf(rings) {
+    let sx = 0, sy = 0, n = 0;
+    rings.forEach((ring) => ring.forEach(([lng, lat]) => { sx += lng; sy += lat; n++; }));
+    return [sx / n, sy / n];
   }
 
-  // Draws the clicked country's states/provinces on top of it. The paths
-  // use percent-of-hero-map coordinates directly (viewBox "0 0 100 100"),
-  // so no letterbox math is needed the way the world-map hit-layer needs —
-  // latLngToMapPercent already did that work per point.
-  function showStatesFor(countryId) {
+  // Draws the clicked country's states/provinces on top of it.
+  //
+  // latLngToMapPercent (used for story pins) is a global lat/lng-to-percent
+  // fit calibrated against a handful of reference points — accurate enough
+  // for a single pin, but tracing hundreds of points along a real border
+  // makes its small error visible as a mismatch between the state lines
+  // and the country's actual outline. So instead, each country's states
+  // are fit LOCALLY: their own real lng/lat bounding box is stretched to
+  // exactly match countryBox — the same precise box (from the real cablop
+  // SVG data) already used to draw the country outline and frame the zoom.
+  // That guarantees the state lines land exactly on the country they
+  // belong to, regardless of any error in the global calibration.
+  //
+  // countryBox's own real-world extent is approximated (by inverting the
+  // global calibration, padded generously) just to decide which states
+  // count as "mainland" for that bounding-box fit — dropping far-flung
+  // overseas territories (French Guiana, Hawaii, Bonaire) that would
+  // otherwise stretch the fit across most of the map, while keeping
+  // legitimately huge, spread-out countries (Russia) intact.
+  function showStatesFor(countryId, countryBox) {
     clearStateLayer();
     const states = statesData && statesData[countryId];
     if (!states || !states.length) return;
+
+    const PAD = 4;
+    const [lngA, latA] = percentToApproxLatLng(countryBox.left - PAD, countryBox.top - PAD);
+    const [lngB, latB] = percentToApproxLatLng(countryBox.left + countryBox.width + PAD, countryBox.top + countryBox.height + PAD);
+    const rangeLngMin = Math.min(lngA, lngB), rangeLngMax = Math.max(lngA, lngB);
+    const rangeLatMin = Math.min(latA, latB), rangeLatMax = Math.max(latA, latB);
+    const mainland = states.filter((s) => {
+      const [clng, clat] = centroidOf(s.r);
+      return clng >= rangeLngMin && clng <= rangeLngMax && clat >= rangeLatMin && clat <= rangeLatMax;
+    });
+    const core = mainland.length ? mainland : states;
+
+    let lngMin = Infinity, lngMax = -Infinity, latMin = Infinity, latMax = -Infinity;
+    core.forEach((s) =>
+      s.r.forEach((ring) =>
+        ring.forEach(([lng, lat]) => {
+          if (lng < lngMin) lngMin = lng;
+          if (lng > lngMax) lngMax = lng;
+          if (lat < latMin) latMin = lat;
+          if (lat > latMax) latMax = lat;
+        })
+      )
+    );
+    const lngSpan = lngMax - lngMin || 1;
+    const latSpan = latMax - latMin || 1;
+
+    // Maps a state's real lng/lat into percent-of-hero-map by fitting the
+    // core (mainland) lng/lat range onto countryBox — not the global
+    // calibration. Territories outside the core still render (just off
+    // wherever their real coordinates land, typically clipped by
+    // .hero-map's overflow:hidden), matching how the country zoom itself
+    // only frames the mainland without hiding the rest of the country.
+    function project(lng, lat) {
+      const fracX = (lng - lngMin) / lngSpan;
+      const fracY = 1 - (lat - latMin) / latSpan; // lat increases north; screen Y increases down
+      return {
+        left: countryBox.left + fracX * countryBox.width,
+        top: countryBox.top + fracY * countryBox.height,
+      };
+    }
+
+    function ringToPathData(ring) {
+      return (
+        "M " +
+        ring
+          .map(([lng, lat]) => {
+            const { left, top } = project(lng, lat);
+            return `${left.toFixed(2)} ${top.toFixed(2)}`;
+          })
+          .join(" L ") +
+        " Z"
+      );
+    }
+
+    function stateBoxFromRings(rings) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      rings.forEach((ring) =>
+        ring.forEach(([lng, lat]) => {
+          const { left, top } = project(lng, lat);
+          if (left < minX) minX = left;
+          if (left > maxX) maxX = left;
+          if (top < minY) minY = top;
+          if (top > maxY) maxY = top;
+        })
+      );
+      return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+    }
 
     const layer = document.createElementNS(svgNS, "svg");
     layer.setAttribute("viewBox", "0 0 100 100");
@@ -511,8 +581,9 @@ async function initCountryZoom() {
       overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
       unit.classList.add("active");
       activeId = id;
-      zoomTo(unit);
-      showStatesFor(id);
+      const box = countryBoxPercent(unit);
+      zoomToBox(box);
+      showStatesFor(id, box);
     }
 
     unit.addEventListener("click", toggle);
