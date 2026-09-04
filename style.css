@@ -304,6 +304,34 @@ p { margin: 0 0 1em; }
   outline: 2px solid var(--cream);
   outline-offset: 1px;
 }
+/* State/province boundaries drawn on top of a zoomed-in country. Unlike
+   the country layer (invisible until hover, since the base map image
+   already shows country coloring), there's no underlying art for state
+   borders, so these get a visible stroke by default. */
+.hero-map .state-hit-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.state-hit-layer .state-hit {
+  fill: transparent;
+  stroke: rgba(243, 234, 216, 0.45);
+  stroke-width: 0.12;
+  vector-effect: non-scaling-stroke;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: fill 0.2s ease;
+}
+.state-hit-layer .state-hit:hover,
+.state-hit-layer .state-hit.active {
+  fill: rgba(243, 234, 216, 0.28);
+}
+.state-hit-layer .state-hit:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 1px;
+}
 .map-zoom-reset {
   position: absolute;
   top: 12px;
