@@ -405,56 +405,71 @@ async function initCountryZoom() {
     return svgBoxToMapPercent(boxForUnit(unit));
   }
 
-  // The inverse of latLngToMapPercent — only needs to be roughly right,
-  // since it's used purely to decide which states are "mainland" (see
-  // below), not for final pixel placement.
-  function percentToApproxLatLng(left, top) {
-    const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
-    const fracX = (left - 6) / 88;
-    const fracY = (top - 15.68) / 68.64;
-    const svgX = fracX * VB.width + VB.minX;
-    const svgY = fracY * VB.height + VB.minY;
-    return [(svgX - 411.09) / 2.3272, (534.77 - svgY) / 2.8281];
-  }
-
+  // Draws the clicked country's states/provinces on top of it.
+  //
+  // Each country's states are fit LOCALLY: their own real lng/lat bounding
+  // box (just the "mainland" cluster, see below) is stretched to exactly
+  // match countryBox — the same precise box (from the real cablop SVG
+  // data) already used to draw the country outline and frame the zoom.
+  // That guarantees the state lines land exactly on the country they
+  // belong to, regardless of any error in the global calibration.
+  //
+  // Two wrinkles real country data hits that the fit has to handle:
+  //
+  // 1. Antimeridian crossing — Alaska's Aleutians, Russia's Chukotka, Fiji,
+  //    etc. have some points at ~+180° longitude and others at ~-180°,
+  //    which are geographically adjacent but numerically far apart. Left
+  //    alone, that makes bounding-box math think the country spans nearly
+  //    the whole globe. unwrapLng() re-expresses every ring's longitude as
+  //    a continuous offset from the country's own first coordinate, so
+  //    "180.0" and "-179.9" become numerically adjacent again.
+  //
+  // 2. Which states are "mainland" — a country's overseas territories
+  //    (French Guiana, Hawaii, Bonaire, Macquarie Island...) sit in
+  //    world-states.json alongside the mainland, but the cablop artwork
+  //    doesn't draw them, so including them would stretch the fit across
+  //    far more of the map than the visible country shape covers. Rather
+  //    than guessing a real-world distance/area threshold (Alaska and
+  //    Hawaii are both "far" from the continental US by that measure, yet
+  //    only Alaska is actually drawn), each state's centroid is run
+  //    through the already-calibrated global latLngToMapPercent (the same
+  //    formula used for story pins) and kept only if that lands inside
+  //    countryBox — i.e. inside the area the artwork actually draws for
+  //    this country. A small pad absorbs the global formula's normal
+  //    imprecision without letting genuinely distant territories back in.
   function centroidOf(rings) {
     let sx = 0, sy = 0, n = 0;
     rings.forEach((ring) => ring.forEach(([lng, lat]) => { sx += lng; sy += lat; n++; }));
     return [sx / n, sy / n];
   }
 
-  // Draws the clicked country's states/provinces on top of it.
-  //
-  // latLngToMapPercent (used for story pins) is a global lat/lng-to-percent
-  // fit calibrated against a handful of reference points — accurate enough
-  // for a single pin, but tracing hundreds of points along a real border
-  // makes its small error visible as a mismatch between the state lines
-  // and the country's actual outline. So instead, each country's states
-  // are fit LOCALLY: their own real lng/lat bounding box is stretched to
-  // exactly match countryBox — the same precise box (from the real cablop
-  // SVG data) already used to draw the country outline and frame the zoom.
-  // That guarantees the state lines land exactly on the country they
-  // belong to, regardless of any error in the global calibration.
-  //
-  // countryBox's own real-world extent is approximated (by inverting the
-  // global calibration, padded generously) just to decide which states
-  // count as "mainland" for that bounding-box fit — dropping far-flung
-  // overseas territories (French Guiana, Hawaii, Bonaire) that would
-  // otherwise stretch the fit across most of the map, while keeping
-  // legitimately huge, spread-out countries (Russia) intact.
   function showStatesFor(countryId, countryBox) {
     clearStateLayer();
-    const states = statesData && statesData[countryId];
-    if (!states || !states.length) return;
+    const rawStates = statesData && statesData[countryId];
+    if (!rawStates || !rawStates.length) return;
 
-    const PAD = 4;
-    const [lngA, latA] = percentToApproxLatLng(countryBox.left - PAD, countryBox.top - PAD);
-    const [lngB, latB] = percentToApproxLatLng(countryBox.left + countryBox.width + PAD, countryBox.top + countryBox.height + PAD);
-    const rangeLngMin = Math.min(lngA, lngB), rangeLngMax = Math.max(lngA, lngB);
-    const rangeLatMin = Math.min(latA, latB), rangeLatMax = Math.max(latA, latB);
+    const refLng = rawStates[0].r[0][0][0];
+    function unwrapLng(lng) {
+      let d = lng - refLng;
+      while (d > 180) d -= 360;
+      while (d < -180) d += 360;
+      return refLng + d;
+    }
+    const states = rawStates.map((s) => ({
+      ...s,
+      r: s.r.map((ring) => ring.map(([lng, lat]) => [unwrapLng(lng), lat])),
+    }));
+
+    const PAD = 1;
     const mainland = states.filter((s) => {
       const [clng, clat] = centroidOf(s.r);
-      return clng >= rangeLngMin && clng <= rangeLngMax && clat >= rangeLatMin && clat <= rangeLatMax;
+      const pct = latLngToMapPercent(clat, clng);
+      return (
+        pct.left >= countryBox.left - PAD &&
+        pct.left <= countryBox.left + countryBox.width + PAD &&
+        pct.top >= countryBox.top - PAD &&
+        pct.top <= countryBox.top + countryBox.height + PAD
+      );
     });
     const core = mainland.length ? mainland : states;
 
