@@ -516,7 +516,7 @@ async function initCountryZoom() {
     // closes that gap but reintroduces shape warping. BLEND is how far
     // to lean toward filling the box: 0 = pure shape accuracy, 1 = pure
     // fill (the old behavior). 0.5 splits the difference.
-    const BLEND = 0.5;
+    const BLEND = 1;
     const scaleXFill = countryBox.width / lngSpan;
     const scaleYFill = countryBox.height / latSpan;
     const scaleUniform = Math.min(countryBox.width / (lngSpan * cosLat), countryBox.height / latSpan);
