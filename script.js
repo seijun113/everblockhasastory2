@@ -452,28 +452,57 @@ async function initCountryZoom() {
   function countryFrameBox(g) {
     const parts = [...g.querySelectorAll(".country-part")];
     if (parts.length <= 1) return g.getBBox();
-    const boxed = parts.map((p) => {
-      const b = p.getBBox();
-      return { bbox: b, area: b.width * b.height };
-    });
-    boxed.sort((a, b) => b.area - a.area);
-    const seed = boxed[0].bbox;
-    const padX = seed.width * 1.5 + 15;
-    const padY = seed.height * 1.5 + 15;
-    const minCx = seed.x - padX;
-    const maxCx = seed.x + seed.width + padX;
-    const minCy = seed.y - padY;
-    const maxCy = seed.y + seed.height + padY;
-    let minX = seed.x, minY = seed.y, maxX = seed.x + seed.width, maxY = seed.y + seed.height;
-    boxed.forEach(({ bbox }) => {
-      const cx = bbox.x + bbox.width / 2;
-      const cy = bbox.y + bbox.height / 2;
-      if (cx >= minCx && cx <= maxCx && cy >= minCy && cy <= maxCy) {
-        minX = Math.min(minX, bbox.x);
-        minY = Math.min(minY, bbox.y);
-        maxX = Math.max(maxX, bbox.x + bbox.width);
-        maxY = Math.max(maxY, bbox.y + bbox.height);
+    const boxes = parts.map((p) => p.getBBox());
+    // Cluster parts that are geographically close to each other (their
+    // bounding boxes, expanded by a margin, overlap) and frame on
+    // whichever cluster has the MOST member regions. This finds "the
+    // mainland" by how many administrative regions make it up rather
+    // than by any single region's area — important for a country like
+    // France, where mainland France is subdivided into over a dozen
+    // small regions while a single overseas territory (French Guiana)
+    // can have a bigger bounding box than any one of them.
+    const MARGIN = 8; // degrees
+    const parent = boxes.map((_, i) => i);
+    function find(i) {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
       }
+      return i;
+    }
+    function union(a, b) {
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent[ra] = rb;
+    }
+    function near(a, b) {
+      return !(
+        a.x + a.width + MARGIN < b.x ||
+        b.x + b.width + MARGIN < a.x ||
+        a.y + a.height + MARGIN < b.y ||
+        b.y + b.height + MARGIN < a.y
+      );
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        if (near(boxes[i], boxes[j])) union(i, j);
+      }
+    }
+    const clusters = new Map();
+    boxes.forEach((b, i) => {
+      const root = find(i);
+      if (!clusters.has(root)) clusters.set(root, []);
+      clusters.get(root).push(b);
+    });
+    let best = null;
+    clusters.forEach((members) => {
+      if (!best || members.length > best.length) best = members;
+    });
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    best.forEach((b) => {
+      minX = Math.min(minX, b.x);
+      minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.width);
+      maxY = Math.max(maxY, b.y + b.height);
     });
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
