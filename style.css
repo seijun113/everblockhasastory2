@@ -221,7 +221,7 @@ p { margin: 0 0 1em; }
 
 .hero-map {
   position: relative;
-  aspect-ratio: 4/3;
+  aspect-ratio: 2/1;
   border-radius: var(--radius);
   overflow: hidden;
 }
@@ -229,15 +229,8 @@ p { margin: 0 0 1em; }
 .worldmap-base {
   position: absolute;
   inset: 6%;
-  background: linear-gradient(100deg, var(--gold) 0%, var(--olive-light) 24%, var(--olive) 46%, #7a4a2a 68%, var(--gold) 100%);
-  -webkit-mask-image: url('https://raw.githubusercontent.com/cablop/simple-world-map-by-continents/master/world-map.min.svg');
-  mask-image: url('https://raw.githubusercontent.com/cablop/simple-world-map-by-continents/master/world-map.min.svg');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 4px;
 }
 .map-credit {
   position: absolute;
@@ -274,7 +267,7 @@ p { margin: 0 0 1em; }
   background: var(--ink);
 }
 
-/* Continent click-to-zoom (map.html's larger map only) */
+/* Country click-to-zoom (map.html's larger map only) */
 .map-zoom-layer {
   position: absolute;
   inset: 0;
@@ -282,53 +275,45 @@ p { margin: 0 0 1em; }
   transform-origin: 0 0;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* The world map itself: every country and state/province rendered as
+   real vector shapes (from world-states.json's real geography) rather
+   than a raster/masked background image. This single layer is both the
+   visible map and the click/hover hit-layer, so there's nothing else to
+   keep in alignment with it. */
 .hero-map .country-hit-layer {
   position: absolute;
   left: 6%;
-  top: 15.68%;
+  top: 6%;
   width: 88%;
-  height: 68.64%;
+  height: 88%;
   pointer-events: none;
+}
+.country-hit-layer .country-part {
+  fill: url(#worldGradient);
+  stroke: none;
+  pointer-events: auto;
+  transition: filter 0.2s ease, stroke 0.2s ease;
 }
 .country-hit-layer .country-hit {
-  fill: transparent;
-  pointer-events: auto;
   cursor: pointer;
-  transition: fill 0.2s ease;
 }
-.country-hit-layer .country-hit:hover,
-.country-hit-layer .country-hit.active {
-  fill: rgba(243, 234, 216, 0.22);
+.country-hit-layer .country-hit:hover .country-part,
+.country-hit-layer .country-hit.active .country-part {
+  filter: brightness(1.18);
+}
+/* Once a country is zoomed into, reveal cream borders between its
+   states/provinces — the same paths that fill the country just gain a
+   stroke; there's no separate overlay layer to keep aligned anymore. */
+.country-hit-layer .country-hit.active .country-part {
+  stroke: rgba(243, 234, 216, 0.5);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.country-hit-layer .country-hit.active .country-part:hover,
+.country-hit-layer .country-hit.active .country-part.active-state {
+  filter: brightness(1.45);
 }
 .country-hit-layer .country-hit:focus-visible {
-  outline: 2px solid var(--cream);
-  outline-offset: 1px;
-}
-/* State/province boundaries drawn on top of a zoomed-in country. Unlike
-   the country layer (invisible until hover, since the base map image
-   already shows country coloring), there's no underlying art for state
-   borders, so these get a visible stroke by default. */
-.hero-map .state-hit-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.state-hit-layer .state-hit {
-  fill: transparent;
-  stroke: rgba(243, 234, 216, 0.45);
-  stroke-width: 0.35;
-  vector-effect: non-scaling-stroke;
-  pointer-events: auto;
-  cursor: pointer;
-  transition: fill 0.2s ease;
-}
-.state-hit-layer .state-hit:hover,
-.state-hit-layer .state-hit.active {
-  fill: rgba(243, 234, 216, 0.28);
-}
-.state-hit-layer .state-hit:focus-visible {
   outline: 2px solid var(--cream);
   outline-offset: 1px;
 }
