@@ -157,19 +157,27 @@ function videoToStoryShape(v) {
 // those against their known real-world lat/lng — so this reflects the
 // asset's actual (slightly cropped, non-±180/±90) coordinate range rather
 // than assuming a textbook equirectangular projection.
+// The world SVG is a plain equirectangular projection (lng -180..180 ->
+// 0..360, lat 90..-90 -> 0..180) — a 2:1 shape — but .hero-map itself is
+// a boxier 4:3, so the SVG is letterboxed (preserveAspectRatio "meet")
+// rather than stretched to fill it: full width, centered vertically,
+// with empty margin above and below. These constants describe that
+// letterboxing so percent-of-hero-map math (pins, zoom-to-box) matches
+// exactly what's on screen. Keep MAP_ASPECT in sync with .hero-map's
+// CSS aspect-ratio.
+const MAP_ASPECT = 4 / 3;
+const WORLD_ASPECT = 360 / 180;
+const WORLD_CONTENT_HEIGHT_PCT = (MAP_ASPECT / WORLD_ASPECT) * 100;
+const WORLD_CONTENT_TOP_PCT = (100 - WORLD_CONTENT_HEIGHT_PCT) / 2;
+
 function latLngToMapPercent(lat, lng) {
-  // Plain equirectangular projection (lng -180..180 -> 0..360, lat
-  // 90..-90 -> 0..180) — the SAME formula and coordinate space the world
-  // map's own SVG viewBox uses (see initCountryZoom below), so pins,
-  // country fills, and state borders are always in perfect agreement
-  // with no separate calibration to keep in sync.
   const fracX = (lng + 180) / 360;
   const fracY = (90 - lat) / 180;
-  const left = 6 + fracX * 88;
-  const top = 6 + fracY * 88;
+  const left = fracX * 100;
+  const top = WORLD_CONTENT_TOP_PCT + fracY * WORLD_CONTENT_HEIGHT_PCT;
   return {
-    left: Math.min(97, Math.max(3, left)),
-    top: Math.min(97, Math.max(3, top)),
+    left: Math.min(99, Math.max(1, left)),
+    top: Math.min(99, Math.max(1, top)),
   };
 }
 
@@ -228,18 +236,17 @@ const COUNTRY_NAMES = {"_somaliland":"Somaliland","ae":"United Arab Emirates","a
 // contain-fit geometry as the pins (6% inset/88% width; ~15.68% offset/
 // 68.64% height, from the SVG's real letterboxed aspect ratio).
 function svgBoxToMapPercent(box) {
-  // box is in the world SVG's own viewBox units (0 0 360 180 — raw
-  // lng/lat degrees shifted to start at 0), so converting to percent-of-
-  // hero-map is a direct, symmetric scale: no letterboxing, since the
-  // SVG's own aspect ratio (2:1) matches .hero-map's exactly.
+  // box is in the world SVG's own viewBox units (0 0 360 180). See the
+  // letterboxing comment above latLngToMapPercent for why the vertical
+  // axis needs an offset/scale and the horizontal one doesn't.
   const fracX0 = box.x / 360;
   const fracX1 = (box.x + box.width) / 360;
   const fracY0 = box.y / 180;
   const fracY1 = (box.y + box.height) / 180;
-  const left0 = 6 + fracX0 * 88;
-  const left1 = 6 + fracX1 * 88;
-  const top0 = 6 + fracY0 * 88;
-  const top1 = 6 + fracY1 * 88;
+  const left0 = fracX0 * 100;
+  const left1 = fracX1 * 100;
+  const top0 = WORLD_CONTENT_TOP_PCT + fracY0 * WORLD_CONTENT_HEIGHT_PCT;
+  const top1 = WORLD_CONTENT_TOP_PCT + fracY1 * WORLD_CONTENT_HEIGHT_PCT;
   return {
     left: Math.min(left0, left1),
     top: Math.min(top0, top1),
@@ -285,7 +292,7 @@ async function initCountryZoom() {
   // per-country box-fitting to keep in sync.
   const overlay = document.createElementNS(svgNS, "svg");
   overlay.setAttribute("viewBox", "0 0 360 180");
-  overlay.setAttribute("preserveAspectRatio", "none");
+  overlay.setAttribute("preserveAspectRatio", "xMidYMid meet");
   overlay.classList.add("country-hit-layer");
 
   const defs = document.createElementNS(svgNS, "defs");
