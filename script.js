@@ -165,7 +165,7 @@ function videoToStoryShape(v) {
 // letterboxing so percent-of-hero-map math (pins, zoom-to-box) matches
 // exactly what's on screen. Keep MAP_ASPECT in sync with .hero-map's
 // CSS aspect-ratio.
-const MAP_ASPECT = 4 / 3;
+const MAP_ASPECT = 8 / 5;
 const WORLD_ASPECT = 360 / 180;
 const WORLD_CONTENT_HEIGHT_PCT = (MAP_ASPECT / WORLD_ASPECT) * 100;
 const WORLD_CONTENT_TOP_PCT = (100 - WORLD_CONTENT_HEIGHT_PCT) / 2;
