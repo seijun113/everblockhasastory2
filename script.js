@@ -422,7 +422,41 @@ async function initCountryZoom() {
     activeStatePath = null;
   }
 
+  // Current pan/zoom state, in the same translate%/scale terms used in
+  // zoomLayer's transform. Tracked explicitly (rather than re-reading the
+  // transform string) so dragging can adjust just the translate part
+  // without disturbing scale, and so both zoomToBox and the drag handler
+  // share one clamping rule.
+  let currentScale = 1;
+  let currentTx = 0;
+  let currentTy = 0;
+
+  // Keeps the current pan within the content: the zoomed content is
+  // currentScale times the size of the frame, anchored at its top-left
+  // (transform-origin: 0 0), so its right/bottom edge is at
+  // currentTx/Ty + 100*scale percent. Clamping tx/ty to [100*(1-scale), 0]
+  // guarantees the frame is always fully covered by content — no empty
+  // margin exposed by dragging too far.
+  function clampPan(tx, ty, scale) {
+    const min = 100 * (1 - scale);
+    return {
+      tx: Math.min(0, Math.max(min, tx)),
+      ty: Math.min(0, Math.max(min, ty)),
+    };
+  }
+
+  function applyZoomTransform() {
+    zoomLayer.style.transform = `translate(${currentTx}%, ${currentTy}%) scale(${currentScale})`;
+    // Pins live inside zoomLayer too, so without this they'd grow right
+    // along with the map. --zoom-scale lets .map-pin's CSS counter it,
+    // so a pin gets smaller (not bigger) the further in you zoom.
+    mapEl.style.setProperty("--zoom-scale", currentScale);
+  }
+
   function resetZoom() {
+    currentScale = 1;
+    currentTx = 0;
+    currentTy = 0;
     zoomLayer.style.transform = "";
     mapEl.style.removeProperty("--zoom-scale");
     mapEl.classList.remove("is-zoomed");
@@ -444,11 +478,11 @@ async function initCountryZoom() {
     const oy = centerTop / 100;
     const tx = (0.5 - ox * scale) * 100;
     const ty = (0.5 - oy * scale) * 100;
-    zoomLayer.style.transform = `translate(${tx}%, ${ty}%) scale(${scale})`;
-    // Pins live inside zoomLayer too, so without this they'd grow right
-    // along with the map. --zoom-scale lets .map-pin's CSS counter it,
-    // so a pin gets smaller (not bigger) the further in you zoom.
-    mapEl.style.setProperty("--zoom-scale", scale);
+    const clamped = clampPan(tx, ty, scale);
+    currentScale = scale;
+    currentTx = clamped.tx;
+    currentTy = clamped.ty;
+    applyZoomTransform();
     mapEl.classList.add("is-zoomed");
   }
 
@@ -558,6 +592,76 @@ async function initCountryZoom() {
       });
     });
   });
+
+  // Drag-to-pan once zoomed in. Pointer Events unify mouse/touch/pen.
+  // Listens on mapEl (not zoomLayer, which is pointer-events:none) so a
+  // drag started over open ocean works just as well as one started on a
+  // country/state shape or a pin. A small movement threshold tells a
+  // real drag apart from a plain click/tap, and a real drag swallows the
+  // click that would otherwise follow it, so releasing over a country
+  // doesn't also toggle its zoom.
+  const DRAG_THRESHOLD = 6; // px
+  let dragState = null;
+
+  function onPointerDown(e) {
+    if (!mapEl.classList.contains("is-zoomed")) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    const rect = mapEl.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startTx: currentTx,
+      startTy: currentTy,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+    try {
+      mapEl.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  function onPointerMove(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      dragState.moved = true;
+      mapEl.classList.add("is-dragging");
+    }
+    const dTx = (dx / dragState.width) * 100;
+    const dTy = (dy / dragState.height) * 100;
+    const clamped = clampPan(dragState.startTx + dTx, dragState.startTy + dTy, currentScale);
+    currentTx = clamped.tx;
+    currentTy = clamped.ty;
+    zoomLayer.style.transform = `translate(${currentTx}%, ${currentTy}%) scale(${currentScale})`;
+  }
+
+  function onPointerUp(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const wasDrag = dragState.moved;
+    dragState = null;
+    mapEl.classList.remove("is-dragging");
+    if (wasDrag) {
+      mapEl.addEventListener(
+        "click",
+        (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+        },
+        { capture: true, once: true }
+      );
+    }
+  }
+
+  mapEl.addEventListener("pointerdown", onPointerDown);
+  mapEl.addEventListener("pointermove", onPointerMove);
+  mapEl.addEventListener("pointerup", onPointerUp);
+  mapEl.addEventListener("pointercancel", onPointerUp);
 
   if (resetBtn) resetBtn.addEventListener("click", resetZoom);
 }
