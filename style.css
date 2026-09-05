@@ -277,6 +277,27 @@ p { margin: 0 0 1em; }
   transform-origin: 0 0;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Grab affordance once zoomed in, and grabbing feedback while an actual
+   drag is happening. Extra ancestor classes give these enough
+   specificity to win over the plain "pointer" cursor set on clickable
+   country/state shapes and pins below. */
+.hero-map-interactive.is-zoomed {
+  cursor: grab;
+}
+.hero-map-interactive.is-zoomed .country-hit-layer .country-hit,
+.hero-map-interactive.is-zoomed .map-pin {
+  cursor: grab;
+}
+.hero-map-interactive.is-dragging,
+.hero-map-interactive.is-dragging .country-hit-layer .country-hit,
+.hero-map-interactive.is-dragging .map-pin {
+  cursor: grabbing;
+}
+/* While actively dragging, track the pointer 1:1 instead of animating
+   toward each intermediate position over the usual 0.6s zoom transition. */
+.hero-map-interactive.is-dragging .map-zoom-layer {
+  transition: none;
+}
 /* The world map itself: every country and state/province rendered as
    real vector shapes (from world-states.json's real geography) rather
    than a raster/masked background image. This single layer is both the
