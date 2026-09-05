@@ -323,24 +323,37 @@ async function initCountryZoom() {
   // continuous shape; the sliver that lands outside the visible 0..360
   // viewBox is simply clipped by the map card's own overflow, costing a
   // hair of coastline on those specific edge cases and nothing elsewhere.
-  function unwrapRing(ring) {
-    let offset = 0;
-    let prevLng = null;
+  function unwrapLngNear(lng, ref) {
+    let d = lng - ref;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    return ref + d;
+  }
+
+  // Antimeridian (+-180deg) crossing — Alaska's Aleutians, Russia's
+  // Chukotka, Fiji, etc. — have rings whose points jump from ~+180 to
+  // ~-180 between neighbors. Projected naively that draws a spurious line
+  // clear across the map. Unwrapping keeps a ring continuous; anchoring
+  // every ring's own starting point to the same country-wide reference
+  // longitude (rather than letting each ring drift off on its own) also
+  // keeps outlying-island rings in the same coordinate space as the
+  // mainland, instead of the two landing on opposite sides of the globe.
+  // The sliver that lands outside the visible 0..360 viewBox is simply
+  // clipped by the map card's own overflow, costing a hair of coastline
+  // on those specific edge cases and nothing elsewhere.
+  function unwrapRing(ring, ref) {
+    let prev = null;
     return ring.map(([lng, lat]) => {
-      if (prevLng !== null) {
-        const d = lng - prevLng;
-        if (d > 180) offset -= 360;
-        else if (d < -180) offset += 360;
-      }
-      prevLng = lng;
-      return [lng + offset, lat];
+      const unwrapped = prev === null ? unwrapLngNear(lng, ref) : unwrapLngNear(lng, prev);
+      prev = unwrapped;
+      return [unwrapped, lat];
     });
   }
 
-  function ringToPathData(ring) {
+  function ringToPathData(ring, ref) {
     return (
       "M " +
-      unwrapRing(ring)
+      unwrapRing(ring, ref)
         .map(([lng, lat]) => {
           const { x, y } = project(lng, lat);
           return `${x.toFixed(2)} ${y.toFixed(2)}`;
@@ -356,6 +369,10 @@ async function initCountryZoom() {
       const states = statesData[code];
       if (!states || !states.length) return;
       const label = COUNTRY_NAMES[code] || code;
+      // Every ring in this country (across all its states) unwraps
+      // relative to the SAME reference point, so multi-ring states like
+      // Alaska (mainland + Aleutian chain) stay in one coordinate space.
+      const ref = states[0].r[0][0][0];
 
       const g = document.createElementNS(svgNS, "g");
       g.setAttribute("id", code);
@@ -371,7 +388,7 @@ async function initCountryZoom() {
 
       states.forEach((state) => {
         const path = document.createElementNS(svgNS, "path");
-        path.setAttribute("d", state.r.map(ringToPathData).join(" "));
+        path.setAttribute("d", state.r.map((ring) => ringToPathData(ring, ref)).join(" "));
         path.classList.add("country-part");
         if (interactiveRoot && states.length > 1) {
           const pTitle = document.createElementNS(svgNS, "title");
