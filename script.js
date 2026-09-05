@@ -424,6 +424,7 @@ async function initCountryZoom() {
 
   function resetZoom() {
     zoomLayer.style.transform = "";
+    mapEl.style.removeProperty("--zoom-scale");
     mapEl.classList.remove("is-zoomed");
     activeId = null;
     overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
@@ -444,6 +445,10 @@ async function initCountryZoom() {
     const tx = (0.5 - ox * scale) * 100;
     const ty = (0.5 - oy * scale) * 100;
     zoomLayer.style.transform = `translate(${tx}%, ${ty}%) scale(${scale})`;
+    // Pins live inside zoomLayer too, so without this they'd grow right
+    // along with the map. --zoom-scale lets .map-pin's CSS counter it,
+    // so a pin gets smaller (not bigger) the further in you zoom.
+    mapEl.style.setProperty("--zoom-scale", scale);
     mapEl.classList.add("is-zoomed");
   }
 
