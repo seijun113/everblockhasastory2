@@ -158,23 +158,15 @@ function videoToStoryShape(v) {
 // asset's actual (slightly cropped, non-±180/±90) coordinate range rather
 // than assuming a textbook equirectangular projection.
 function latLngToMapPercent(lat, lng) {
-  const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
-  const svgX = 2.3272 * lng + 411.09;
-  const svgY = -2.8281 * lat + 534.77;
-
-  // Fraction across the SVG's own drawn artwork (0..1 for on-map locations;
-  // can go slightly outside that range for far-Pacific/polar spots this
-  // particular map doesn't draw — clamped below so a pin never renders
-  // totally off the visible card).
-  const fracX = (svgX - VB.minX) / VB.width;
-  const fracY = (svgY - VB.minY) / VB.height;
-
-  // Horizontal: no letterboxing (the SVG fills the box's full width).
+  // Plain equirectangular projection (lng -180..180 -> 0..360, lat
+  // 90..-90 -> 0..180) — the SAME formula and coordinate space the world
+  // map's own SVG viewBox uses (see initCountryZoom below), so pins,
+  // country fills, and state borders are always in perfect agreement
+  // with no separate calibration to keep in sync.
+  const fracX = (lng + 180) / 360;
+  const fracY = (90 - lat) / 180;
   const left = 6 + fracX * 88;
-  // Vertical: letterboxed — the rendered map only occupies the middle
-  // ~68.6% of .worldmap-base's height, offset by ~15.7% from the top.
-  const top = 15.68 + fracY * 68.64;
-
+  const top = 6 + fracY * 88;
   return {
     left: Math.min(97, Math.max(3, left)),
     top: Math.min(97, Math.max(3, top)),
@@ -236,15 +228,18 @@ const COUNTRY_NAMES = {"_somaliland":"Somaliland","ae":"United Arab Emirates","a
 // contain-fit geometry as the pins (6% inset/88% width; ~15.68% offset/
 // 68.64% height, from the SVG's real letterboxed aspect ratio).
 function svgBoxToMapPercent(box) {
-  const VB = { minX: 30.767, minY: 241.591, width: 784.077, height: 458.627 };
-  const fracX0 = (box.x - VB.minX) / VB.width;
-  const fracX1 = (box.x + box.width - VB.minX) / VB.width;
-  const fracY0 = (box.y - VB.minY) / VB.height;
-  const fracY1 = (box.y + box.height - VB.minY) / VB.height;
+  // box is in the world SVG's own viewBox units (0 0 360 180 — raw
+  // lng/lat degrees shifted to start at 0), so converting to percent-of-
+  // hero-map is a direct, symmetric scale: no letterboxing, since the
+  // SVG's own aspect ratio (2:1) matches .hero-map's exactly.
+  const fracX0 = box.x / 360;
+  const fracX1 = (box.x + box.width) / 360;
+  const fracY0 = box.y / 180;
+  const fracY1 = (box.y + box.height) / 180;
   const left0 = 6 + fracX0 * 88;
   const left1 = 6 + fracX1 * 88;
-  const top0 = 15.68 + fracY0 * 68.64;
-  const top1 = 15.68 + fracY1 * 68.64;
+  const top0 = 6 + fracY0 * 88;
+  const top1 = 6 + fracY1 * 88;
   return {
     left: Math.min(left0, left1),
     top: Math.min(top0, top1),
@@ -261,114 +256,146 @@ function svgBoxToMapPercent(box) {
 const WORLD_STATES_URL = "/world-states.json";
 
 async function initCountryZoom() {
-  const mapEl = document.querySelector(".hero-map-interactive");
-  if (!mapEl) return; // not on map.html
-  const zoomLayer = mapEl.querySelector(".map-zoom-layer");
-  const resetBtn = mapEl.querySelector(".map-zoom-reset");
-  if (!zoomLayer) return;
+  const mapEl = document.querySelector(".hero-map");
+  if (!mapEl) return; // no map on this page
+  const svgNS = "http://www.w3.org/2000/svg";
+  const interactiveRoot = mapEl.classList.contains("hero-map-interactive") ? mapEl : null;
+  const zoomLayer = interactiveRoot && interactiveRoot.querySelector(".map-zoom-layer");
+  const resetBtn = interactiveRoot && interactiveRoot.querySelector(".map-zoom-reset");
+  // Where the SVG map mounts: inside the zoom layer on the big interactive
+  // map (so it pans/scales together with pins), or directly in .hero-map
+  // for the small decorative homepage map.
+  const mountEl = zoomLayer || mapEl;
+  if (interactiveRoot && !zoomLayer) return;
 
-  let svgText;
   let statesData = null;
   try {
-    const [countryRes, statesRes] = await Promise.all([
-      fetch(COUNTRY_MAP_SVG_URL, { cache: "force-cache" }),
-      fetch(WORLD_STATES_URL, { cache: "force-cache" }).catch(() => null),
-    ]);
-    svgText = await countryRes.text();
-    if (statesRes && statesRes.ok) {
-      try {
-        statesData = await statesRes.json();
-      } catch (e) {
-        statesData = null; // states just won't be available; country zoom still works
-      }
-    }
+    const res = await fetch(WORLD_STATES_URL, { cache: "force-cache" });
+    if (res.ok) statesData = await res.json();
   } catch (e) {
-    return; // no country hit-layer if the map source can't be fetched; base map + pins still work fine
+    /* no map data; the dark map card background still shows */
   }
+  if (!statesData) return;
 
-  const parsed = new DOMParser().parseFromString(svgText, "image/svg+xml");
-  const source = parsed.documentElement;
-  if (!source || source.querySelector("parsererror")) return;
-
-  const svgNS = "http://www.w3.org/2000/svg";
+  // Every country and state/province is drawn straight from world-
+  // states.json's real lng/lat data through the SAME plain equirectangular
+  // projection latLngToMapPercent() uses for story pins — so country
+  // fills, the state boundaries drawn on top of them, and pins are always
+  // in perfect agreement. There's no separate background image and no
+  // per-country box-fitting to keep in sync.
   const overlay = document.createElementNS(svgNS, "svg");
-  overlay.setAttribute("viewBox", source.getAttribute("viewBox"));
+  overlay.setAttribute("viewBox", "0 0 360 180");
   overlay.setAttribute("preserveAspectRatio", "none");
   overlay.classList.add("country-hit-layer");
 
-  // Each top-level <path id="xx"> or <g id="xx"> (multi-part countries
-  // like archipelagos are grouped) becomes one clickable unit.
-  [...source.children]
-    .filter((el) => el.tagName === "path" || el.tagName === "g")
-    .forEach((el) => {
-      const clone = document.importNode(el, true);
-      clone.classList.add("country-hit");
-      overlay.appendChild(clone);
+  const defs = document.createElementNS(svgNS, "defs");
+  const grad = document.createElementNS(svgNS, "linearGradient");
+  grad.setAttribute("id", "worldGradient");
+  grad.setAttribute("gradientUnits", "userSpaceOnUse");
+  grad.setAttribute("x1", "0");
+  grad.setAttribute("y1", "0");
+  grad.setAttribute("x2", "360");
+  grad.setAttribute("y2", "63");
+  [
+    [0, "var(--gold)"],
+    [24, "var(--olive-light)"],
+    [46, "var(--olive)"],
+    [68, "#7a4a2a"],
+    [100, "var(--gold)"],
+  ].forEach(([pct, color]) => {
+    const stop = document.createElementNS(svgNS, "stop");
+    stop.setAttribute("offset", pct + "%");
+    stop.style.setProperty("stop-color", color);
+    grad.appendChild(stop);
+  });
+  defs.appendChild(grad);
+  overlay.appendChild(defs);
+
+  function project(lng, lat) {
+    return { x: lng + 180, y: 90 - lat };
+  }
+
+  // Antimeridian (+-180deg) crossing — Alaska's Aleutians, Russia's
+  // Chukotka, Fiji, etc. — have rings whose points jump from ~+180 to
+  // ~-180 between neighbors. Projected naively that draws a spurious line
+  // clear across the map. Unwrapping each ring sequentially (relative to
+  // its own previous point, not a fixed reference) keeps it one
+  // continuous shape; the sliver that lands outside the visible 0..360
+  // viewBox is simply clipped by the map card's own overflow, costing a
+  // hair of coastline on those specific edge cases and nothing elsewhere.
+  function unwrapRing(ring) {
+    let offset = 0;
+    let prevLng = null;
+    return ring.map(([lng, lat]) => {
+      if (prevLng !== null) {
+        const d = lng - prevLng;
+        if (d > 180) offset -= 360;
+        else if (d < -180) offset += 360;
+      }
+      prevLng = lng;
+      return [lng + offset, lat];
+    });
+  }
+
+  function ringToPathData(ring) {
+    return (
+      "M " +
+      unwrapRing(ring)
+        .map(([lng, lat]) => {
+          const { x, y } = project(lng, lat);
+          return `${x.toFixed(2)} ${y.toFixed(2)}`;
+        })
+        .join(" L ") +
+      " Z"
+    );
+  }
+
+  Object.keys(statesData)
+    .sort()
+    .forEach((code) => {
+      const states = statesData[code];
+      if (!states || !states.length) return;
+      const label = COUNTRY_NAMES[code] || code;
+
+      const g = document.createElementNS(svgNS, "g");
+      g.setAttribute("id", code);
+      g.classList.add("country-hit");
+      if (interactiveRoot) {
+        g.setAttribute("role", "button");
+        g.setAttribute("tabindex", "0");
+        g.setAttribute("aria-label", `Zoom to ${label}`);
+      }
+      const gTitle = document.createElementNS(svgNS, "title");
+      gTitle.textContent = label;
+      g.appendChild(gTitle);
+
+      states.forEach((state) => {
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", state.r.map(ringToPathData).join(" "));
+        path.classList.add("country-part");
+        if (interactiveRoot && states.length > 1) {
+          const pTitle = document.createElementNS(svgNS, "title");
+          pTitle.textContent = state.n || label;
+          path.appendChild(pTitle);
+        }
+        g.appendChild(path);
+      });
+
+      overlay.appendChild(g);
     });
 
-  zoomLayer.appendChild(overlay);
+  const baseDiv = mountEl.querySelector(":scope > .worldmap-base");
+  if (baseDiv) mountEl.insertBefore(overlay, baseDiv.nextSibling);
+  else mountEl.insertBefore(overlay, mountEl.firstChild);
+
+  if (!interactiveRoot) return; // decorative homepage map: fills only, no zoom/click behavior
 
   let activeId = null;
+  let activeStatePath = null;
 
-  // Multi-part countries (bundled into a <g>) sometimes include far-flung
-  // overseas territories drawn as scattered specks alongside the mainland
-  // (e.g. France's Pacific/Caribbean/Indian Ocean territories bundled with
-  // mainland France) — left alone, that inflates the bounding box and
-  // "zooms in" on nearly the whole map instead of the country. Rendering
-  // each part to a tiny offscreen canvas and checking how much of its own
-  // bounding box it actually fills tells a real landmass (mostly filled)
-  // apart from scattered specks (a huge box that's almost all empty), so
-  // those specks can be skipped when choosing which part to frame on.
-  function pathFillRatio(pathEl, bbox) {
-    const d = pathEl.getAttribute("d");
-    if (!d || bbox.width <= 0 || bbox.height <= 0) return 1;
-    const SAMPLE = 32;
-    const canvas = document.createElement("canvas");
-    canvas.width = SAMPLE;
-    canvas.height = SAMPLE;
-    const ctx = canvas.getContext("2d");
-    let path2d;
-    try {
-      path2d = new Path2D(d);
-    } catch (e) {
-      return 1;
-    }
-    ctx.save();
-    ctx.scale(SAMPLE / bbox.width, SAMPLE / bbox.height);
-    ctx.translate(-bbox.x, -bbox.y);
-    ctx.fill(path2d);
-    ctx.restore();
-    const data = ctx.getImageData(0, 0, SAMPLE, SAMPLE).data;
-    let filled = 0;
-    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) filled++;
-    return filled / (SAMPLE * SAMPLE);
-  }
-
-  function boxForUnit(unit) {
-    const children = unit.tagName.toLowerCase() === "g" ? [...unit.children].filter((c) => c.tagName === "path") : [];
-    if (children.length < 2) return unit.getBBox();
-    const parts = children.map((child) => {
-      const bbox = child.getBBox();
-      return { bbox, ratio: pathFillRatio(child, bbox), area: bbox.width * bbox.height };
-    });
-    const solid = parts.filter((p) => p.ratio >= 0.02);
-    const pool = solid.length ? solid : parts;
-    pool.sort((a, b) => b.area - a.area);
-    return pool[0].bbox;
-  }
-
-  // Currently-shown state/province layer for whichever country is zoomed
-  // in, plus which state (if any) is further zoomed into. Both reset
-  // together whenever the zoom backs all the way out to the world view.
-  let stateLayer = null;
-  let activeStateIdx = null;
-
-  function clearStateLayer() {
-    if (stateLayer) {
-      stateLayer.remove();
-      stateLayer = null;
-    }
-    activeStateIdx = null;
+  function clearActiveState() {
+    if (activeStatePath) activeStatePath.classList.remove("active-state");
+    activeStatePath = null;
   }
 
   function resetZoom() {
@@ -376,269 +403,101 @@ async function initCountryZoom() {
     mapEl.classList.remove("is-zoomed");
     activeId = null;
     overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
-    clearStateLayer();
+    clearActiveState();
   }
 
   // Takes an absolute box already in left/top/width/height percent-of-
-  // hero-map (the same space pins and country hit-shapes live in) and
+  // hero-map (the same space pins and country/state shapes live in) and
   // points the zoom at it. Used for both country-level and state-level
   // zooms, so drilling further into a state is just "zoom to a smaller
   // box in that same coordinate space" — no transform composition needed.
   function zoomToBox(box) {
     const centerLeft = box.left + box.width / 2;
     const centerTop = box.top + box.height / 2;
-    // Scale so the target's longer side fills roughly half the frame,
-    // clamped so tiny areas don't zoom in absurdly far and huge ones
-    // still move.
     const scale = Math.min(10, Math.max(1.8, 55 / Math.max(box.width, box.height, 1)));
     const ox = centerLeft / 100;
     const oy = centerTop / 100;
-    // transform-origin is fixed at 0,0 (see CSS), so translate the scaled
-    // center point back to the visual middle of the frame ourselves.
     const tx = (0.5 - ox * scale) * 100;
     const ty = (0.5 - oy * scale) * 100;
     zoomLayer.style.transform = `translate(${tx}%, ${ty}%) scale(${scale})`;
     mapEl.classList.add("is-zoomed");
   }
 
-  function countryBoxPercent(unit) {
-    return svgBoxToMapPercent(boxForUnit(unit));
-  }
-
-  // Draws the clicked country's states/provinces on top of it.
-  //
-  // Each country's states are fit LOCALLY: their own real lng/lat bounding
-  // box (just the "mainland" cluster, see below) is stretched to exactly
-  // match countryBox — the same precise box (from the real cablop SVG
-  // data) already used to draw the country outline and frame the zoom.
-  // That guarantees the state lines land exactly on the country they
-  // belong to, regardless of any error in the global calibration.
-  //
-  // Two wrinkles real country data hits that the fit has to handle:
-  //
-  // 1. Antimeridian crossing — Alaska's Aleutians, Russia's Chukotka, Fiji,
-  //    etc. have some points at ~+180° longitude and others at ~-180°,
-  //    which are geographically adjacent but numerically far apart. Left
-  //    alone, that makes bounding-box math think the country spans nearly
-  //    the whole globe. unwrapLng() re-expresses every ring's longitude as
-  //    a continuous offset from the country's own first coordinate, so
-  //    "180.0" and "-179.9" become numerically adjacent again.
-  //
-  // 2. Which states are "mainland" — a country's overseas territories
-  //    (French Guiana, Hawaii, Bonaire, Macquarie Island...) sit in
-  //    world-states.json alongside the mainland, but the cablop artwork
-  //    doesn't draw them, so including them would stretch the fit across
-  //    far more of the map than the visible country shape covers. Rather
-  //    than guessing a real-world distance/area threshold (Alaska and
-  //    Hawaii are both "far" from the continental US by that measure, yet
-  //    only Alaska is actually drawn), each state's centroid is run
-  //    through the already-calibrated global latLngToMapPercent (the same
-  //    formula used for story pins) and kept only if that lands inside
-  //    countryBox — i.e. inside the area the artwork actually draws for
-  //    this country. A small pad absorbs the global formula's normal
-  //    imprecision without letting genuinely distant territories back in.
-  function centroidOf(rings) {
-    let sx = 0, sy = 0, n = 0;
-    rings.forEach((ring) => ring.forEach(([lng, lat]) => { sx += lng; sy += lat; n++; }));
-    return [sx / n, sy / n];
-  }
-
-  function showStatesFor(countryId, countryBox) {
-    clearStateLayer();
-    const rawStates = statesData && statesData[countryId];
-    if (!rawStates || !rawStates.length) return;
-
-    const refLng = rawStates[0].r[0][0][0];
-    function unwrapLng(lng) {
-      let d = lng - refLng;
-      while (d > 180) d -= 360;
-      while (d < -180) d += 360;
-      return refLng + d;
-    }
-    const states = rawStates.map((s) => ({
-      ...s,
-      r: s.r.map((ring) => ring.map(([lng, lat]) => [unwrapLng(lng), lat])),
-    }));
-
-    const PAD = 1;
-    const mainland = states.filter((s) => {
-      const [clng, clat] = centroidOf(s.r);
-      const pct = latLngToMapPercent(clat, clng);
-      return (
-        pct.left >= countryBox.left - PAD &&
-        pct.left <= countryBox.left + countryBox.width + PAD &&
-        pct.top >= countryBox.top - PAD &&
-        pct.top <= countryBox.top + countryBox.height + PAD
-      );
+  // A multi-part country's <g> often bundles far-flung overseas
+  // territories alongside its mainland (France + French Guiana + Réunion
+  // + New Caledonia...). Framing the zoom on the combined bounding box of
+  // ALL parts would zoom out to nearly the whole map instead of the
+  // country. Instead: seed on the single largest-area part (almost always
+  // the mainland), then only fold in other parts whose own bounding box
+  // sits within a generous margin around that seed — catching genuinely
+  // attached archipelagos (Indonesia, Japan) while excluding overseas
+  // territories on the other side of the globe.
+  function countryFrameBox(g) {
+    const parts = [...g.querySelectorAll(".country-part")];
+    if (parts.length <= 1) return g.getBBox();
+    const boxed = parts.map((p) => {
+      const b = p.getBBox();
+      return { bbox: b, area: b.width * b.height };
     });
-    const core = mainland.length ? mainland : states;
-
-    let lngMin = Infinity, lngMax = -Infinity, latMin = Infinity, latMax = -Infinity;
-    core.forEach((s) =>
-      s.r.forEach((ring) =>
-        ring.forEach(([lng, lat]) => {
-          if (lng < lngMin) lngMin = lng;
-          if (lng > lngMax) lngMax = lng;
-          if (lat < latMin) latMin = lat;
-          if (lat > latMax) latMax = lat;
-        })
-      )
-    );
-    const lngSpan = lngMax - lngMin || 1;
-    const latSpan = latMax - latMin || 1;
-
-    // Maps a state's real lng/lat into percent-of-hero-map by fitting the
-    // core (mainland) lng/lat range onto countryBox — not the global
-    // calibration. Territories outside the core still render (just off
-    // wherever their real coordinates land, typically clipped by
-    // .hero-map's overflow:hidden), matching how the country zoom itself
-    // only frames the mainland without hiding the rest of the country.
-    //
-    // A degree of longitude and a degree of latitude are not the same
-    // physical distance — longitude lines squeeze together away from the
-    // equator by a factor of cos(latitude). Stretching lngSpan and latSpan
-    // independently to fill countryBox (the old approach) ignores that,
-    // so any country wide enough for the difference to matter (the US
-    // being the clearest case) came out visibly warped: states nearer the
-    // box's edges drifted from their real shape/position. Instead, scale
-    // both axes by the SAME factor — derived from the core's center
-    // latitude — so relative shape is preserved, and center the (possibly
-    // letterboxed) result within countryBox.
-    const centerLat = (latMin + latMax) / 2;
-    const cosLat = Math.cos((centerLat * Math.PI) / 180) || 1;
-
-    // Pure proportional (shape-accurate) scale keeps states the right
-    // relative shape but, for a wide/short country whose illustrated
-    // outline isn't drawn to a real projection (the US box is much
-    // taller, relative to its width, than any real projection of the
-    // country would produce), leaves visible empty margin inside that
-    // outline. Pure fill-the-box (independent lng/lat scale, no cosLat)
-    // closes that gap but reintroduces shape warping. BLEND is how far
-    // to lean toward filling the box: 0 = pure shape accuracy, 1 = pure
-    // fill (the old behavior). 0.5 splits the difference.
-    const BLEND = 1;
-    const scaleXFill = countryBox.width / lngSpan;
-    const scaleYFill = countryBox.height / latSpan;
-    const scaleUniform = Math.min(countryBox.width / (lngSpan * cosLat), countryBox.height / latSpan);
-    const lngScale = Math.pow(scaleXFill, BLEND) * Math.pow(cosLat * scaleUniform, 1 - BLEND);
-    const latScale = Math.pow(scaleYFill, BLEND) * Math.pow(scaleUniform, 1 - BLEND);
-    const renderedWidth = lngSpan * lngScale;
-    const renderedHeight = latSpan * latScale;
-    const offsetX = countryBox.left + (countryBox.width - renderedWidth) / 2;
-    const offsetY = countryBox.top + (countryBox.height - renderedHeight) / 2;
-
-    function project(lng, lat) {
-      return {
-        left: offsetX + (lng - lngMin) * lngScale,
-        top: offsetY + (latMax - lat) * latScale, // lat increases north; screen Y increases down
-      };
-    }
-
-    function ringToPathData(ring) {
-      return (
-        "M " +
-        ring
-          .map(([lng, lat]) => {
-            const { left, top } = project(lng, lat);
-            return `${left.toFixed(2)} ${top.toFixed(2)}`;
-          })
-          .join(" L ") +
-        " Z"
-      );
-    }
-
-    function stateBoxFromRings(rings) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      rings.forEach((ring) =>
-        ring.forEach(([lng, lat]) => {
-          const { left, top } = project(lng, lat);
-          if (left < minX) minX = left;
-          if (left > maxX) maxX = left;
-          if (top < minY) minY = top;
-          if (top > maxY) maxY = top;
-        })
-      );
-      return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
-    }
-
-    const layer = document.createElementNS(svgNS, "svg");
-    layer.setAttribute("viewBox", "0 0 100 100");
-    layer.setAttribute("preserveAspectRatio", "none");
-    layer.classList.add("state-hit-layer");
-
-    states.forEach((state, idx) => {
-      const path = document.createElementNS(svgNS, "path");
-      path.setAttribute("d", state.r.map(ringToPathData).join(" "));
-      path.classList.add("state-hit");
-      const label = state.n || state.c || `Region ${idx + 1}`;
-      path.setAttribute("role", "button");
-      path.setAttribute("tabindex", "0");
-      path.setAttribute("aria-label", `Zoom to ${label}`);
-      const titleEl = document.createElementNS(svgNS, "title");
-      titleEl.textContent = label;
-      path.appendChild(titleEl);
-
-      function toggle() {
-        if (activeStateIdx === idx) {
-          // Clicking the already-zoomed state again backs all the way
-          // out to the world view, matching the country-level toggle.
-          resetZoom();
-          return;
-        }
-        layer.querySelectorAll(".state-hit.active").forEach((el) => el.classList.remove("active"));
-        path.classList.add("active");
-        activeStateIdx = idx;
-        zoomToBox(stateBoxFromRings(state.r));
+    boxed.sort((a, b) => b.area - a.area);
+    const seed = boxed[0].bbox;
+    const padX = seed.width * 1.5 + 15;
+    const padY = seed.height * 1.5 + 15;
+    const minCx = seed.x - padX;
+    const maxCx = seed.x + seed.width + padX;
+    const minCy = seed.y - padY;
+    const maxCy = seed.y + seed.height + padY;
+    let minX = seed.x, minY = seed.y, maxX = seed.x + seed.width, maxY = seed.y + seed.height;
+    boxed.forEach(({ bbox }) => {
+      const cx = bbox.x + bbox.width / 2;
+      const cy = bbox.y + bbox.height / 2;
+      if (cx >= minCx && cx <= maxCx && cy >= minCy && cy <= maxCy) {
+        minX = Math.min(minX, bbox.x);
+        minY = Math.min(minY, bbox.y);
+        maxX = Math.max(maxX, bbox.x + bbox.width);
+        maxY = Math.max(maxY, bbox.y + bbox.height);
       }
-
-      path.addEventListener("click", (e) => {
-        e.stopPropagation();
-        toggle();
-      });
-      path.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          toggle();
-        }
-      });
-
-      layer.appendChild(path);
     });
-
-    zoomLayer.appendChild(layer);
-    stateLayer = layer;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
-  overlay.querySelectorAll(".country-hit").forEach((unit) => {
-    const id = unit.getAttribute("id");
-    const label = COUNTRY_NAMES[id] || id;
+  overlay.querySelectorAll(".country-hit").forEach((g) => {
+    const code = g.getAttribute("id");
 
-    unit.setAttribute("role", "button");
-    unit.setAttribute("tabindex", "0");
-    unit.setAttribute("aria-label", `Zoom to ${label}`);
-    const titleEl = document.createElementNS(svgNS, "title");
-    titleEl.textContent = label;
-    unit.insertBefore(titleEl, unit.firstChild);
-
-    function toggle() {
-      if (activeId === id) {
+    function toggleCountry() {
+      if (activeId === code) {
         resetZoom();
         return;
       }
       overlay.querySelectorAll(".country-hit.active").forEach((el) => el.classList.remove("active"));
-      unit.classList.add("active");
-      activeId = id;
-      const box = countryBoxPercent(unit);
-      zoomToBox(box);
-      showStatesFor(id, box);
+      clearActiveState();
+      g.classList.add("active");
+      activeId = code;
+      zoomToBox(svgBoxToMapPercent(countryFrameBox(g)));
     }
 
-    unit.addEventListener("click", toggle);
-    unit.addEventListener("keydown", (e) => {
+    g.addEventListener("click", toggleCountry);
+    g.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        toggle();
+        toggleCountry();
       }
+    });
+
+    g.querySelectorAll(".country-part").forEach((path) => {
+      path.addEventListener("click", (e) => {
+        if (activeId !== code) return; // not zoomed into this country yet; let the click bubble to toggleCountry
+        e.stopPropagation();
+        if (activeStatePath === path) {
+          clearActiveState();
+          zoomToBox(svgBoxToMapPercent(countryFrameBox(g)));
+          return;
+        }
+        clearActiveState();
+        path.classList.add("active-state");
+        activeStatePath = path;
+        zoomToBox(svgBoxToMapPercent(path.getBBox()));
+      });
     });
   });
 
