@@ -221,7 +221,7 @@ p { margin: 0 0 1em; }
 
 .hero-map {
   position: relative;
-  aspect-ratio: 4/3;
+  aspect-ratio: 8/5;
   border-radius: var(--radius);
   overflow: hidden;
 }
