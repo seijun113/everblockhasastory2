@@ -245,14 +245,19 @@ p { margin: 0 0 1em; }
   border-radius: 50% 50% 50% 0;
   background: var(--pc, var(--orange));
   border: 2px solid var(--cream);
-  transform: translate(-50%, -100%) rotate(-45deg);
+  /* Pins live inside .map-zoom-layer, so the zoom's own scale() would
+     otherwise blow them up along with the map. Countering with the
+     current zoom factor (set as --zoom-scale by zoomToBox/resetZoom in
+     script.js) keeps a pin's on-screen size shrinking as you zoom in,
+     rather than growing with the map. */
+  transform: translate(-50%, -100%) rotate(-45deg) scale(calc(1 / var(--zoom-scale, 1)));
   box-shadow: 0 3px 8px rgba(0,0,0,0.45);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   pointer-events: auto;
 }
 .map-pin:hover {
-  transform: translate(-50%, -100%) rotate(-45deg) scale(1.25);
+  transform: translate(-50%, -100%) rotate(-45deg) scale(calc(1.25 / var(--zoom-scale, 1)));
   box-shadow: 0 5px 14px rgba(0,0,0,0.6);
 }
 .map-pin::after {
