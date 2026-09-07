@@ -1191,12 +1191,7 @@ function initShop() {
   const buyBtn = document.getElementById("buy-btn");
   if (buyBtn) {
     buyBtn.addEventListener("click", () => {
-      const variantId = SHOPIFY_VARIANTS[selectedSize];
-      if (!variantId) {
-        showToast("That size isn't available right now.");
-        return;
-      }
-      window.location.href = `https://${SHOPIFY_STORE_DOMAIN}/cart/${variantId}:1`;
+      window.location.href = "https://everybodyhasastory.myshopify.com";
     });
   }
 }
