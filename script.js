@@ -10,8 +10,73 @@
 // EDIT THIS: your backend's real Vercel address, e.g. "https://every-block-backend.vercel.app"
 const API_BASE = "https://every-block-backend.vercel.app";
 
+// Only used for Google sign-in. The anon key is meant to be public --
+// Supabase enforces access with Row Level Security, not by keeping this
+// secret. Everything else on the site still goes through our own backend
+// (API_BASE) as before; this client exists solely to hand off to Google
+// and hand back a session.
+const SUPABASE_URL = "https://zyuptekpbxeilweikybq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5dXB0ZWtwYnhlaWx3ZWlreWJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTA4NjAsImV4cCI6MjEwMjc2Njg2MH0.-MW6zaKMhGO4yt4mG7He5-atDh-BySqgOV47h8qxP9g";
+
+function getSupabaseClient() {
+  if (window.__sbClient) return window.__sbClient;
+  if (!window.supabase || !window.supabase.createClient) return null;
+  window.__sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return window.__sbClient;
+}
+
+// ---------- Google sign-in (Supabase OAuth) ----------
+// Lets people skip typing a name/email/password entirely. Supabase
+// handles the redirect to Google and back; once we land back here with a
+// session, we copy its tokens into the same localStorage keys the rest of
+// the site already reads (see getTokens/saveTokens below), then make sure
+// a matching profiles row exists (our own /api/auth/signup route never
+// runs for OAuth sign-ins, so /api/auth/ensure-profile does that instead).
+async function signInWithGoogle() {
+  const client = getSupabaseClient();
+  if (!client) {
+    showToast("Couldn't load Google sign-in. Refresh and try again.");
+    return;
+  }
+  await client.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.href.split("#")[0] },
+  });
+}
+
+function initGoogleButtons() {
+  document.querySelectorAll(".google-signin-btn").forEach((btn) => {
+    btn.addEventListener("click", signInWithGoogle);
+  });
+}
+
+async function trySyncOAuthSession() {
+  const hasAuthRedirect = location.hash.includes("access_token") || location.search.includes("code=");
+  const { access } = getTokens();
+  if (!hasAuthRedirect && access) return;
+
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  try {
+    const { data } = await client.auth.getSession();
+    const session = data && data.session;
+    if (!session) return;
+
+    saveTokens({ access_token: session.access_token, refresh_token: session.refresh_token });
+    await apiFetch("/api/auth/ensure-profile", { method: "POST" }).catch(() => {});
+
+    if (hasAuthRedirect && window.history && history.replaceState) {
+      history.replaceState(null, "", location.pathname + location.search.replace(/[?&]code=[^&]*/, ""));
+    }
+  } catch (err) {
+    // Not fatal -- the account-gate / account page will just show logged out
+    // and the person can try again.
+  }
+}
+
 // ---------- Nav toggle + page setup ----------
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const toggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".main-nav");
   if (toggle && nav) {
@@ -21,6 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAllStoryGrids();
   renderMapPins().then(initCountryZoom);
   wireCarousel();
+  initGoogleButtons();
+  await trySyncOAuthSession();
   initShareGate();
   initShareForm();
   initShop();
