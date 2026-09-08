@@ -76,7 +76,11 @@
         <div class="field">
           <label for="order-code">Shopify order number</label>
           <input type="text" id="order-code" placeholder="e.g. 1001 or #1001">
-          <div class="field-hint">Must match the email on your account above. Don't have a shirt yet? <a href="shop.html" style="color:var(--orange); font-weight:600;">Shop the collection</a>.</div>
+        </div>
+        <div class="field">
+          <label for="order-zip">Billing or shipping ZIP / postal code</label>
+          <input type="text" id="order-zip" placeholder="e.g. 11358" inputmode="numeric" maxlength="12">
+          <div class="field-hint">The ZIP code from that order -- doesn't need to match your account email. Don't have a shirt yet? <a href="shop.html" style="color:var(--orange); font-weight:600;">Shop the collection</a>.</div>
         </div>
         <button type="button" id="unlock-btn" class="btn btn-primary btn-block">Verify Order</button>
       </div>
