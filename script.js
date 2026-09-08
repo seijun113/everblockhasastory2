@@ -823,6 +823,7 @@ function initShareGate() {
   const acctPasswordInput = document.getElementById("acct-password");
   const unlockBtn = document.getElementById("unlock-btn");
   const codeInput = document.getElementById("order-code"); // now holds a Shopify order number
+  const zipInput = document.getElementById("order-zip");
   if (!accountGate || !unlockGate || !form || !createAccountBtn || !unlockBtn) return;
 
   function showStep(step) {
@@ -924,9 +925,15 @@ function initShareGate() {
 
   unlockBtn.addEventListener("click", async () => {
     const orderNumber = (codeInput.value || "").trim();
+    const zip = (zipInput ? zipInput.value : "").trim();
     if (!orderNumber) {
       showToast("Enter your Shopify order number to continue.");
       codeInput.focus();
+      return;
+    }
+    if (!zip) {
+      showToast("Enter the ZIP code from that order to continue.");
+      if (zipInput) zipInput.focus();
       return;
     }
     const originalLabel = unlockBtn.textContent;
@@ -936,7 +943,7 @@ function initShareGate() {
       const res = await apiFetch("/api/shopify/verify-purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderNumber }),
+        body: JSON.stringify({ orderNumber, zip }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't verify your order.");
@@ -962,6 +969,7 @@ function initShareGate() {
       acctEmailInput.value = "";
       if (acctPasswordInput) acctPasswordInput.value = "";
       codeInput.value = "";
+      if (zipInput) zipInput.value = "";
       showStep("account");
       showToast("Signed out on this browser.");
     });
@@ -971,9 +979,10 @@ function initShareGate() {
     if (!el) return;
     el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); createAccountBtn.click(); } });
   });
-  if (codeInput) {
-    codeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); unlockBtn.click(); } });
-  }
+  [codeInput, zipInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); unlockBtn.click(); } });
+  });
 
   renderFromState();
 }
