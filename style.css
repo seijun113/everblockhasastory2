@@ -90,6 +90,24 @@ p { margin: 0 0 1em; }
 .btn-outline:hover { border-color: var(--cream); background: rgba(243,234,216,0.06); }
 .btn-outline.engagement-active { border-color: var(--orange); color: var(--orange); }
 
+.verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(157, 176, 122, 0.15);
+  color: #9db07a;
+  border: 1px solid rgba(157, 176, 122, 0.35);
+}
+.verified-pill.not-verified {
+  background: rgba(255,255,255,0.06);
+  color: var(--cream-dim);
+  border: 1px solid var(--line);
+}
+
 .btn-dark {
   background: var(--ink);
   color: var(--cream);
