@@ -1305,6 +1305,7 @@ function initAccountPage() {
   const submitBtn = document.getElementById("acct-page-submit");
 
   const nameEl = document.getElementById("account-name");
+  const avatarEl = document.getElementById("account-avatar");
   const emailEl = document.getElementById("account-email");
   const verifiedEl = document.getElementById("account-verified");
   const myStoriesGrid = document.getElementById("my-stories-grid");
@@ -1339,11 +1340,16 @@ function initAccountPage() {
       showLoggedIn(data.profile.name);
       if (nameEl) nameEl.textContent = data.profile.name || "—";
       if (emailEl) emailEl.textContent = data.user.email;
+      if (avatarEl) {
+        const initials = (data.profile.name || data.user.email || "?").trim().split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+        avatarEl.textContent = initials || "?";
+      }
       if (verifiedEl) {
-        verifiedEl.textContent = data.profile.shopify_verified
+        const isVerified = !!data.profile.shopify_verified;
+        verifiedEl.textContent = isVerified
           ? "✓ Verified shirt owner"
-          : "Not verified yet — verify an order on the Share Your Story page.";
-        verifiedEl.style.color = data.profile.shopify_verified ? "var(--olive-light, #9db07a)" : "var(--cream-dim)";
+          : "Not verified — verify an order on the Share Your Story page";
+        verifiedEl.classList.toggle("not-verified", !isVerified);
       }
       saveAccountCache({ name: data.profile.name, email: data.user.email });
 
