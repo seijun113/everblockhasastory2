@@ -75,27 +75,36 @@
 
     <!-- Logged in: profile + my stories -->
     <div id="account-logged-in" style="display:none;">
-      <div class="form-card">
-        <span class="eyebrow">Profile</span>
-        <h2 style="margin-top:8px; font-size:1.4rem;" id="account-name">—</h2>
-        <p style="color:var(--cream-dim); margin-bottom:4px;" id="account-email"></p>
-        <p style="font-weight:600;" id="account-verified"></p>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-          <button type="button" id="logout-btn" class="btn btn-outline">Log Out</button>
+      <div class="form-card" style="display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+        <span class="avatar" id="account-avatar" style="width:68px; height:68px; font-size:1.5rem; flex-shrink:0;"></span>
+        <div style="flex:1; min-width:200px;">
+          <span class="eyebrow">Profile</span>
+          <h2 style="margin:6px 0 2px; font-size:1.5rem;" id="account-name">—</h2>
+          <p style="color:var(--cream-dim); margin:0 0 12px;" id="account-email"></p>
+          <span class="verified-pill" id="account-verified"></span>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <a id="view-public-profile-link" href="#" class="btn btn-outline">View Public Profile</a>
+          <button type="button" id="logout-btn" class="btn btn-outline">Log Out</button>
         </div>
       </div>
 
-      <div style="margin-top:40px;">
-        <h2 style="font-size:1.5rem;">Your Stories</h2>
+      <div style="margin-top:48px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+          <h2 style="font-size:1.5rem; margin:0;">Your Stories</h2>
+          <div style="flex:1; height:1px; background:var(--line);"></div>
+        </div>
         <p id="my-stories-empty" style="color:var(--cream-dim); display:none;">You haven't posted any stories yet.</p>
-        <div id="my-stories-grid" class="story-grid" style="margin-top:20px;"></div>
+        <div id="my-stories-grid" class="story-grid"></div>
       </div>
 
-      <div style="margin-top:40px;">
-        <h2 style="font-size:1.5rem;">Saved Stories</h2>
+      <div style="margin-top:48px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+          <h2 style="font-size:1.5rem; margin:0;">Saved Stories</h2>
+          <div style="flex:1; height:1px; background:var(--line);"></div>
+        </div>
         <p id="saved-stories-empty" style="color:var(--cream-dim); display:none;">You haven't saved any stories yet.</p>
-        <div id="saved-stories-grid" class="story-grid" style="margin-top:20px;"></div>
+        <div id="saved-stories-grid" class="story-grid"></div>
       </div>
     </div>
 
