@@ -62,6 +62,9 @@
         <input type="password" id="acct-page-password" placeholder="At least 8 characters">
       </div>
       <button type="button" id="acct-page-submit" class="btn btn-primary btn-block">Log In / Sign Up</button>
+      <div style="text-align:right; margin-top:10px;">
+        <a href="#" id="forgot-password-link" style="color:var(--cream-dim); font-size:0.85rem;">Forgot password?</a>
+      </div>
       <div style="display:flex; align-items:center; gap:10px; margin:16px 0;">
         <div style="flex:1; height:1px; background:rgba(255,255,255,0.12);"></div>
         <span style="color:var(--cream-dim); font-size:0.85rem;">or</span>
@@ -73,13 +76,49 @@
       </button>
     </div>
 
+    <!-- Forgot password: request a reset email -->
+    <div id="forgot-password-panel" class="form-card" style="display:none;">
+      <h2 style="margin-top:0; font-size:1.4rem;">Reset Your Password</h2>
+      <p style="color:var(--cream-dim);">Enter your account email and we'll send you a link to set a new password.</p>
+      <div class="field">
+        <label for="reset-email">Email</label>
+        <input type="email" id="reset-email" placeholder="you@example.com">
+      </div>
+      <button type="button" id="send-reset-btn" class="btn btn-primary btn-block">Send Reset Link</button>
+      <div style="text-align:center; margin-top:14px;">
+        <a href="#" id="back-to-login-link" style="color:var(--cream-dim); font-size:0.85rem;">Back to log in</a>
+      </div>
+    </div>
+
+    <!-- Password recovery: shown when arriving via the reset email link -->
+    <div id="new-password-panel" class="form-card" style="display:none;">
+      <h2 style="margin-top:0; font-size:1.4rem;">Set A New Password</h2>
+      <p style="color:var(--cream-dim);">Choose a new password for your account.</p>
+      <div class="field">
+        <label for="new-password">New password</label>
+        <input type="password" id="new-password" placeholder="At least 8 characters">
+      </div>
+      <button type="button" id="set-new-password-btn" class="btn btn-primary btn-block">Update Password</button>
+    </div>
+
     <!-- Logged in: profile + my stories -->
     <div id="account-logged-in" style="display:none;">
       <div class="form-card" style="display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
         <span class="avatar" id="account-avatar" style="width:68px; height:68px; font-size:1.5rem; flex-shrink:0;"></span>
         <div style="flex:1; min-width:200px;">
           <span class="eyebrow">Profile</span>
-          <h2 style="margin:6px 0 2px; font-size:1.5rem;" id="account-name">—</h2>
+          <h2 style="margin:6px 0 2px; font-size:1.5rem; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span id="account-name">—</span>
+            <button type="button" id="edit-name-btn" class="btn btn-outline" style="padding:3px 12px; font-size:0.72rem; font-weight:600;">Edit</button>
+          </h2>
+          <div id="edit-name-form" style="display:none; margin:4px 0 10px;">
+            <input type="text" id="new-name-input" placeholder="New username" style="margin-bottom:8px; max-width:260px;">
+            <div style="display:flex; gap:8px;">
+              <button type="button" id="save-name-btn" class="btn btn-primary" style="padding:7px 16px; font-size:0.8rem;">Save</button>
+              <button type="button" id="cancel-name-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.8rem;">Cancel</button>
+            </div>
+            <p id="name-edit-hint" style="color:var(--cream-dim); font-size:0.78rem; margin:6px 0 0;"></p>
+          </div>
           <p style="color:var(--cream-dim); margin:0 0 12px;" id="account-email"></p>
           <span class="verified-pill" id="account-verified"></span>
         </div>
