@@ -1315,6 +1315,23 @@ function initAccountPage() {
   const viewProfileLink = document.getElementById("view-public-profile-link");
   const logoutBtn = document.getElementById("logout-btn");
 
+  const forgotPasswordLink = document.getElementById("forgot-password-link");
+  const backToLoginLink = document.getElementById("back-to-login-link");
+  const forgotPasswordPanel = document.getElementById("forgot-password-panel");
+  const resetEmailInput = document.getElementById("reset-email");
+  const sendResetBtn = document.getElementById("send-reset-btn");
+  const newPasswordPanel = document.getElementById("new-password-panel");
+  const newPasswordInput = document.getElementById("new-password");
+  const setNewPasswordBtn = document.getElementById("set-new-password-btn");
+
+  const editNameBtn = document.getElementById("edit-name-btn");
+  const editNameForm = document.getElementById("edit-name-form");
+  const newNameInput = document.getElementById("new-name-input");
+  const saveNameBtn = document.getElementById("save-name-btn");
+  const cancelNameBtn = document.getElementById("cancel-name-btn");
+  const nameEditHint = document.getElementById("name-edit-hint");
+  let currentProfileName = "";
+
   function showLoggedOut() {
     loggedOutView.style.display = "block";
     loggedInView.style.display = "none";
@@ -1338,6 +1355,7 @@ function initAccountPage() {
       const data = await res.json();
 
       showLoggedIn(data.profile.name);
+      currentProfileName = data.profile.name || "";
       if (nameEl) nameEl.textContent = data.profile.name || "—";
       if (emailEl) emailEl.textContent = data.user.email;
       if (avatarEl) {
@@ -1541,6 +1559,150 @@ function initAccountPage() {
       if (link) link.textContent = "Log In";
       showToast("Logged out.");
       showLoggedOut();
+    });
+  }
+
+  // ---------- Forgot password ----------
+  function showForgotPassword() {
+    loggedOutView.style.display = "none";
+    if (forgotPasswordPanel) forgotPasswordPanel.style.display = "block";
+  }
+  function hideForgotPassword() {
+    if (forgotPasswordPanel) forgotPasswordPanel.style.display = "none";
+    loggedOutView.style.display = "block";
+  }
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (resetEmailInput && emailInput) resetEmailInput.value = emailInput.value || "";
+      showForgotPassword();
+    });
+  }
+  if (backToLoginLink) {
+    backToLoginLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      hideForgotPassword();
+    });
+  }
+  if (sendResetBtn) {
+    sendResetBtn.addEventListener("click", async () => {
+      const email = (resetEmailInput.value || "").trim();
+      if (!isValidEmail(email)) {
+        showToast("Enter a valid email.");
+        resetEmailInput.focus();
+        return;
+      }
+      const client = getSupabaseClient();
+      if (!client) {
+        showToast("Couldn't load the reset tool. Refresh and try again.");
+        return;
+      }
+      const originalLabel = sendResetBtn.textContent;
+      sendResetBtn.disabled = true;
+      sendResetBtn.textContent = "Sending…";
+      try {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + "/account.html",
+        });
+        if (error) throw new Error(error.message);
+        showToast("Check your email for a reset link.");
+      } catch (err) {
+        showToast(err.message || "Couldn't send reset email.");
+      } finally {
+        sendResetBtn.disabled = false;
+        sendResetBtn.textContent = originalLabel;
+      }
+    });
+  }
+
+  // If we arrived here from the password-reset email link, Supabase puts
+  // "type=recovery" in the URL hash and signs us into a short-lived
+  // recovery session. Show the "set a new password" panel instead of the
+  // normal logged-out/logged-in views.
+  if (location.hash.includes("type=recovery")) {
+    loggedOutView.style.display = "none";
+    loggedInView.style.display = "none";
+    if (newPasswordPanel) newPasswordPanel.style.display = "block";
+  }
+  if (setNewPasswordBtn) {
+    setNewPasswordBtn.addEventListener("click", async () => {
+      const pw = (newPasswordInput.value || "").trim();
+      if (pw.length < 8) {
+        showToast("Password must be at least 8 characters.");
+        newPasswordInput.focus();
+        return;
+      }
+      const client = getSupabaseClient();
+      if (!client) {
+        showToast("Couldn't load the password tool. Refresh and try again.");
+        return;
+      }
+      const originalLabel = setNewPasswordBtn.textContent;
+      setNewPasswordBtn.disabled = true;
+      setNewPasswordBtn.textContent = "Updating…";
+      try {
+        const { error } = await client.auth.updateUser({ password: pw });
+        if (error) throw new Error(error.message);
+        showToast("Password updated. You're signed in.");
+        if (newPasswordPanel) newPasswordPanel.style.display = "none";
+        if (history.replaceState) history.replaceState(null, "", location.pathname);
+        const { data } = await client.auth.getSession();
+        if (data?.session) saveTokens({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
+        await renderState();
+      } catch (err) {
+        showToast(err.message || "Couldn't update password.");
+      } finally {
+        setNewPasswordBtn.disabled = false;
+        setNewPasswordBtn.textContent = originalLabel;
+      }
+    });
+  }
+
+  // ---------- Edit username (once every 7 days, enforced server-side) ----------
+  if (editNameBtn) {
+    editNameBtn.addEventListener("click", () => {
+      if (newNameInput) newNameInput.value = currentProfileName;
+      if (nameEditHint) nameEditHint.textContent = "";
+      if (editNameForm) editNameForm.style.display = "block";
+      editNameBtn.style.display = "none";
+    });
+  }
+  if (cancelNameBtn) {
+    cancelNameBtn.addEventListener("click", () => {
+      if (editNameForm) editNameForm.style.display = "none";
+      if (editNameBtn) editNameBtn.style.display = "inline-flex";
+    });
+  }
+  if (saveNameBtn) {
+    saveNameBtn.addEventListener("click", async () => {
+      const name = (newNameInput.value || "").trim();
+      if (!name) {
+        showToast("Enter a username.");
+        newNameInput.focus();
+        return;
+      }
+      const originalLabel = saveNameBtn.textContent;
+      saveNameBtn.disabled = true;
+      saveNameBtn.textContent = "Saving…";
+      try {
+        const res = await apiFetch("/api/users/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't update username.");
+        showToast("Username updated!");
+        if (editNameForm) editNameForm.style.display = "none";
+        if (editNameBtn) editNameBtn.style.display = "inline-flex";
+        await renderState();
+      } catch (err) {
+        if (nameEditHint) nameEditHint.textContent = err.message || "Couldn't update username.";
+        else showToast(err.message || "Couldn't update username.");
+      } finally {
+        saveNameBtn.disabled = false;
+        saveNameBtn.textContent = originalLabel;
+      }
     });
   }
 
