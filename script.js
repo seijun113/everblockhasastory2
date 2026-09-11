@@ -1332,6 +1332,13 @@ function initAccountPage() {
   const nameEditHint = document.getElementById("name-edit-hint");
   let currentProfileName = "";
 
+  const changePasswordBtn = document.getElementById("change-password-btn");
+  const changePasswordForm = document.getElementById("change-password-form");
+  const changePasswordInput = document.getElementById("change-password-input");
+  const savePasswordBtn = document.getElementById("save-password-btn");
+  const cancelPasswordBtn = document.getElementById("cancel-password-btn");
+  const passwordEditHint = document.getElementById("password-edit-hint");
+
   function showLoggedOut() {
     loggedOutView.style.display = "block";
     loggedInView.style.display = "none";
@@ -1702,6 +1709,54 @@ function initAccountPage() {
       } finally {
         saveNameBtn.disabled = false;
         saveNameBtn.textContent = originalLabel;
+      }
+    });
+  }
+
+  // ---------- Change password (while logged in) ----------
+  if (changePasswordBtn) {
+    changePasswordBtn.addEventListener("click", () => {
+      if (changePasswordInput) changePasswordInput.value = "";
+      if (passwordEditHint) passwordEditHint.textContent = "";
+      if (changePasswordForm) changePasswordForm.style.display = "block";
+      changePasswordBtn.style.display = "none";
+    });
+  }
+  if (cancelPasswordBtn) {
+    cancelPasswordBtn.addEventListener("click", () => {
+      if (changePasswordForm) changePasswordForm.style.display = "none";
+      if (changePasswordBtn) changePasswordBtn.style.display = "inline-flex";
+    });
+  }
+  if (savePasswordBtn) {
+    savePasswordBtn.addEventListener("click", async () => {
+      const pw = (changePasswordInput.value || "").trim();
+      if (pw.length < 8) {
+        if (passwordEditHint) passwordEditHint.textContent = "Password must be at least 8 characters.";
+        else showToast("Password must be at least 8 characters.");
+        changePasswordInput.focus();
+        return;
+      }
+      const client = getSupabaseClient();
+      if (!client) {
+        showToast("Couldn't load the password tool. Refresh and try again.");
+        return;
+      }
+      const originalLabel = savePasswordBtn.textContent;
+      savePasswordBtn.disabled = true;
+      savePasswordBtn.textContent = "Saving…";
+      try {
+        const { error } = await client.auth.updateUser({ password: pw });
+        if (error) throw new Error(error.message);
+        showToast("Password updated.");
+        if (changePasswordForm) changePasswordForm.style.display = "none";
+        if (changePasswordBtn) changePasswordBtn.style.display = "inline-flex";
+      } catch (err) {
+        if (passwordEditHint) passwordEditHint.textContent = err.message || "Couldn't update password.";
+        else showToast(err.message || "Couldn't update password.");
+      } finally {
+        savePasswordBtn.disabled = false;
+        savePasswordBtn.textContent = originalLabel;
       }
     });
   }
