@@ -48,11 +48,7 @@
     <!-- Logged out: login/signup form -->
     <div id="account-logged-out" class="form-card">
       <h2 style="margin-top:0; font-size:1.4rem;">Log In / Sign Up</h2>
-      <p style="color:var(--cream-dim);">New here? Enter your name, email, and a password to create an account. Already have one? Just enter your email and password.</p>
-      <div class="field">
-        <label for="acct-page-name">Name (only needed the first time)</label>
-        <input type="text" id="acct-page-name" placeholder="First name or username">
-      </div>
+      <p style="color:var(--cream-dim);">New here? Enter your email and a password to create an account — you'll pick a username next. Already have one? Just enter your email and password.</p>
       <div class="field">
         <label for="acct-page-email">Email</label>
         <input type="email" id="acct-page-email" placeholder="you@example.com">
@@ -99,6 +95,17 @@
         <input type="password" id="new-password" placeholder="At least 8 characters">
       </div>
       <button type="button" id="set-new-password-btn" class="btn btn-primary btn-block">Update Password</button>
+    </div>
+
+    <!-- Choose username: shown once, right after creating an account -->
+    <div id="choose-username-panel" class="form-card" style="display:none;">
+      <h2 style="margin-top:0; font-size:1.4rem;">Pick a Username</h2>
+      <p style="color:var(--cream-dim);">One last step — choose a username so people can recognize your stories.</p>
+      <div class="field">
+        <label for="choose-username-input">Username</label>
+        <input type="text" id="choose-username-input" placeholder="First name or username">
+      </div>
+      <button type="button" id="choose-username-submit" class="btn btn-primary btn-block">Continue</button>
     </div>
 
     <!-- Logged in: profile + my stories -->
