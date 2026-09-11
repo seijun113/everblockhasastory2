@@ -311,6 +311,26 @@ const NAME_TO_CODE = {};
 Object.keys(COUNTRY_NAMES).forEach((code) => {
   NAME_TO_CODE[COUNTRY_NAMES[code].toLowerCase()] = code;
 });
+// Common real-world spellings/abbreviations that don't exactly match this
+// map's own display names (which stories' free-text "country" field, set
+// at posting time, often uses instead).
+[
+  ["usa", "us"], ["u.s.a.", "us"], ["united states of america", "us"],
+  ["uk", "gb"], ["u.k.", "gb"], ["great britain", "gb"], ["england", "gb"],
+  ["south korea", "kr"], ["korea, south", "kr"], ["republic of korea", "kr"],
+  ["north korea", "kp"], ["korea, north", "kp"],
+  ["czechia", "cz"],
+  ["ivory coast", "ci"],
+  ["uae", "ae"], ["united arab emirates", "ae"],
+  ["burma", "mm"],
+  ["russian federation", "ru"],
+  ["holland", "nl"],
+  ["macedonia", "mk"],
+  ["swaziland", "sz"],
+  ["cape verde", "cv"],
+].forEach(([alias, code]) => {
+  if (!NAME_TO_CODE[alias]) NAME_TO_CODE[alias] = code;
+});
 
 function countryCodeToFlag(code) {
   if (!code || code.length !== 2) return "\uD83C\uDF0D";
