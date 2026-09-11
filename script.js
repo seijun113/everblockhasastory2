@@ -85,6 +85,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   markActiveNav();
   renderAllStoryGrids();
   renderMapPins().then(initCountryZoom);
+  initMapSearch();
+  initMapPinPopup();
   wireCarousel();
   initGoogleButtons();
   await trySyncOAuthSession();
@@ -257,6 +259,8 @@ function latLngToMapPercent(lat, lng) {
 // twice — e.g. once on page load and again after someone deletes a story —
 // would leave the deleted story's pin behind and pile a duplicate of every
 // surviving pin on top of itself.
+const mapPinStoriesById = new Map();
+
 async function renderMapPins() {
   const mapEl = document.querySelector(".hero-map");
   if (!mapEl) return;
@@ -265,8 +269,10 @@ async function renderMapPins() {
   // homepage's small decorative map) fall back to the old behavior.
   const pinTarget = mapEl.querySelector(".map-zoom-layer") || mapEl;
   pinTarget.querySelectorAll(".map-pin[data-auto-pin]").forEach((el) => el.remove());
+  mapPinStoriesById.clear();
 
   const stories = await API.listStories();
+  renderCountryList(stories);
   const withCoords = stories.filter(
     (s) => String(s.id).startsWith("v_") && typeof s.lat === "number" && typeof s.lng === "number"
   );
@@ -276,7 +282,8 @@ async function renderMapPins() {
       const hue = s.hue || 30;
       const color = `hsl(${hue} 40% 45%)`;
       const title = `${s.location || ""} — ${s.title || "Untitled Story"}`;
-      return `<a class="map-pin" data-auto-pin="1" href="story.html?id=${encodeURIComponent(s.id)}" style="--pc:${color}; left:${left.toFixed(1)}%; top:${top.toFixed(1)}%;" title="${escapeAttr(title)}"></a>`;
+      mapPinStoriesById.set(s.id, s);
+      return `<a class="map-pin" data-auto-pin="1" data-story-id="${escapeAttr(s.id)}" href="story.html?id=${encodeURIComponent(s.id)}" style="--pc:${color}; left:${left.toFixed(1)}%; top:${top.toFixed(1)}%;" title="${escapeAttr(title)}"></a>`;
     })
     .join("");
   if (pinsHTML) {
@@ -296,6 +303,183 @@ const COUNTRY_MAP_SVG_URL = "https://raw.githubusercontent.com/cablop/simple-wor
 // ISO 3166-1 alpha-2 -> display name, for every country/territory this
 // particular map draws (generated from the map's own path ids).
 const COUNTRY_NAMES = {"_somaliland":"Somaliland","ae":"United Arab Emirates","af":"Afghanistan","al":"Albania","am":"Armenia","ao":"Angola","ar":"Argentina","at":"Austria","au":"Australia","az":"Azerbaijan","ba":"Bosnia & Herzegovina","bd":"Bangladesh","be":"Belgium","bf":"Burkina Faso","bg":"Bulgaria","bi":"Burundi","bj":"Benin","bn":"Brunei","bo":"Bolivia","br":"Brazil","bs":"Bahamas","bt":"Bhutan","bw":"Botswana","by":"Belarus","bz":"Belize","ca":"Canada","cd":"DR Congo","cf":"Central African Republic","cg":"Congo","ch":"Switzerland","ci":"Côte d’Ivoire","cl":"Chile","cm":"Cameroon","cn":"China","co":"Colombia","cr":"Costa Rica","cu":"Cuba","cv":"Cape Verde","cy":"Cyprus","cz":"Czech Republic","de":"Germany","dk":"Denmark","dj":"Djibouti","dm":"Dominica","do":"Dominican Republic","dz":"Algeria","ec":"Ecuador","ee":"Estonia","eg":"Egypt","er":"Eritrea","es":"Spain","et":"Ethiopia","fi":"Finland","fk":"Falkland Islands","fr":"France","ga":"Gabon","gb":"United Kingdom","ge":"Georgia","gh":"Ghana","gl":"Greenland","gm":"Gambia","gn":"Guinea","gq":"Equatorial Guinea","gr":"Greece","gt":"Guatemala","gw":"Guinea-Bissau","gy":"Guyana","hn":"Honduras","hr":"Croatia","ht":"Haiti","hu":"Hungary","id":"Indonesia","ie":"Ireland","il":"Israel","in":"India","iq":"Iraq","ir":"Iran","is":"Iceland","it":"Italy","jm":"Jamaica","jo":"Jordan","jp":"Japan","ke":"Kenya","kg":"Kyrgyzstan","kh":"Cambodia","km":"Comoros","kp":"North Korea","kr":"South Korea","kw":"Kuwait","kz":"Kazakhstan","la":"Laos","lb":"Lebanon","lc":"St. Lucia","lk":"Sri Lanka","lr":"Liberia","ls":"Lesotho","lt":"Lithuania","lu":"Luxembourg","lv":"Latvia","ly":"Libya","ma":"Morocco","md":"Moldova","me":"Montenegro","mg":"Madagascar","mk":"North Macedonia","ml":"Mali","mm":"Myanmar (Burma)","mn":"Mongolia","mr":"Mauritania","mt":"Malta","mu":"Mauritius","mv":"Maldives","mw":"Malawi","mx":"Mexico","my":"Malaysia","mz":"Mozambique","na":"Namibia","nc":"New Caledonia","ne":"Niger","ng":"Nigeria","ni":"Nicaragua","nl":"Netherlands","no":"Norway","np":"Nepal","nz":"New Zealand","om":"Oman","pa":"Panama","pe":"Peru","pg":"Papua New Guinea","ph":"Philippines","pk":"Pakistan","pl":"Poland","pr":"Puerto Rico","pt":"Portugal","py":"Paraguay","qa":"Qatar","ro":"Romania","rs":"Serbia","ru":"Russia","rw":"Rwanda","sa":"Saudi Arabia","sb":"Solomon Islands","sc":"Seychelles","sd":"Sudan","se":"Sweden","sg":"Singapore","si":"Slovenia","sk":"Slovakia","sl":"Sierra Leone","sn":"Senegal","so":"Somalia","sr":"Suriname","ss":"South Sudan","st":"São Tomé & Príncipe","sv":"El Salvador","sy":"Syria","sz":"Eswatini","td":"Chad","tg":"Togo","th":"Thailand","tj":"Tajikistan","tm":"Turkmenistan","tn":"Tunisia","tr":"Türkiye","tt":"Trinidad & Tobago","tw":"Taiwan","tz":"Tanzania","ua":"Ukraine","ug":"Uganda","us":"United States","uy":"Uruguay","uz":"Uzbekistan","vc":"St. Vincent & Grenadines","ve":"Venezuela","vn":"Vietnam","vu":"Vanuatu","ye":"Yemen","za":"South Africa","zm":"Zambia","zw":"Zimbabwe"};
+
+// Reverse lookup (lowercased display name -> ISO code) for matching
+// free-text country names (as stored on posted stories, or typed into
+// the map search box) back to the codes this map's SVG actually uses.
+const NAME_TO_CODE = {};
+Object.keys(COUNTRY_NAMES).forEach((code) => {
+  NAME_TO_CODE[COUNTRY_NAMES[code].toLowerCase()] = code;
+});
+
+function countryCodeToFlag(code) {
+  if (!code || code.length !== 2) return "\uD83C\uDF0D";
+  return String.fromCodePoint(...code.toUpperCase().split("").map((c) => 127397 + c.charCodeAt(0)));
+}
+
+// Finds the already-rendered country <g> (built by initCountryZoom, which
+// loads asynchronously) and clicks it, reusing that function's own
+// zoom/toggle logic rather than duplicating it. If the map hasn't
+// finished loading yet, retries for a few seconds before giving up.
+function zoomMapToCountryCode(code, attempt) {
+  attempt = attempt || 0;
+  const g = document.querySelector('.hero-map-interactive .country-hit-layer g[id="' + code + '"]');
+  if (g) {
+    const mapSection = document.querySelector(".hero-map-interactive");
+    if (mapSection) mapSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    g.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return;
+  }
+  if (attempt < 20) {
+    setTimeout(() => zoomMapToCountryCode(code, attempt + 1), 150);
+  } else {
+    showToast("Map is still loading — try again in a moment.");
+  }
+}
+
+// Builds the "Browse by country" list on map.html from real posted
+// stories, grouped by their stored country name. Only in scope on
+// map.html (guarded by the element not existing elsewhere).
+function renderCountryList(stories) {
+  const listEl = document.getElementById("map-country-list");
+  if (!listEl) return;
+
+  const counts = new Map();
+  stories.forEach((s) => {
+    const name = (s.country || "").trim();
+    if (!name) return;
+    counts.set(name, (counts.get(name) || 0) + 1);
+  });
+
+  const rows = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => {
+      const code = NAME_TO_CODE[name.toLowerCase()];
+      const flag = code ? countryCodeToFlag(code) : "\uD83C\uDF0D";
+      const inner = `<span><span class="map-dot" style="background:var(--orange);"></span>${flag} ${escapeHtml(name)}</span><span>${count}</span>`;
+      if (code) {
+        return `<a href="#" class="map-country-link" data-country-code="${escapeAttr(code)}">${inner}</a>`;
+      }
+      return `<span class="map-country-static">${inner}</span>`;
+    })
+    .join("");
+
+  const addYours = `<a href="share.html"><span><span class="map-dot" style="background:var(--gold);"></span>Add your country</span><span>+</span></a>`;
+  listEl.innerHTML = rows + addYours;
+
+  listEl.querySelectorAll(".map-country-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      zoomMapToCountryCode(a.getAttribute("data-country-code"));
+    });
+  });
+}
+
+// ---------- Map search (find a country by name, zoom straight to it) ----------
+function initMapSearch() {
+  const input = document.getElementById("map-search-input");
+  const results = document.getElementById("map-search-results");
+  if (!input || !results) return; // not on map.html
+
+  const entries = Object.keys(COUNTRY_NAMES).map((code) => ({ code, name: COUNTRY_NAMES[code] }));
+
+  function closeResults() {
+    results.classList.remove("open");
+    results.innerHTML = "";
+  }
+
+  function pick(code) {
+    zoomMapToCountryCode(code);
+    input.value = "";
+    closeResults();
+    input.blur();
+  }
+
+  function renderResults(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) { closeResults(); return; }
+    const matches = entries
+      .filter((e) => e.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 8);
+
+    if (!matches.length) {
+      results.innerHTML = '<div class="map-search-empty">No countries match "' + escapeHtml(query.trim()) + '".</div>';
+    } else {
+      results.innerHTML = matches
+        .map((e) => `<div class="map-search-item" data-code="${escapeAttr(e.code)}">${countryCodeToFlag(e.code)} ${escapeHtml(e.name)}</div>`)
+        .join("");
+      results.querySelectorAll(".map-search-item").forEach((item) => {
+        item.addEventListener("click", () => pick(item.getAttribute("data-code")));
+      });
+    }
+    results.classList.add("open");
+  }
+
+  input.addEventListener("input", () => renderResults(input.value));
+  input.addEventListener("focus", () => { if (input.value.trim()) renderResults(input.value); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeResults(); input.blur(); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = results.querySelector(".map-search-item");
+      if (first) pick(first.getAttribute("data-code"));
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".map-search-bar")) closeResults();
+  });
+}
+
+// ---------- Map pin story preview popup ----------
+function openStoryPopup(story) {
+  const popup = document.getElementById("map-story-popup");
+  if (!popup) return;
+  const mediaEl = document.getElementById("map-story-popup-media");
+  const locEl = document.getElementById("map-story-popup-loc");
+  const titleEl = document.getElementById("map-story-popup-title");
+  const authorEl = document.getElementById("map-story-popup-author");
+  const linkEl = document.getElementById("map-story-popup-link");
+
+  if (mediaEl) {
+    mediaEl.style.backgroundImage = story.thumbnailUrl ? `url('${escapeAttr(story.thumbnailUrl)}')` : "";
+  }
+  if (locEl) locEl.textContent = story.location || story.country || "";
+  if (titleEl) titleEl.textContent = story.title || "Untitled Story";
+  if (authorEl) authorEl.textContent = story.author ? "by " + story.author : "";
+  if (linkEl) linkEl.href = "story.html?id=" + encodeURIComponent(story.id);
+
+  popup.classList.add("open");
+}
+function closeStoryPopup() {
+  const popup = document.getElementById("map-story-popup");
+  if (popup) popup.classList.remove("open");
+}
+function initMapPinPopup() {
+  const popup = document.getElementById("map-story-popup");
+  if (!popup) return; // not on map.html
+
+  document.addEventListener("click", (e) => {
+    const pin = e.target.closest(".map-pin[data-auto-pin]");
+    if (!pin) return;
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return; // let modified clicks open in a new tab as normal
+    const id = pin.getAttribute("data-story-id");
+    const story = id && mapPinStoriesById.get(id);
+    if (!story) return;
+    e.preventDefault();
+    openStoryPopup(story);
+  });
+
+  const closeBtn = document.getElementById("map-story-popup-close");
+  if (closeBtn) closeBtn.addEventListener("click", closeStoryPopup);
+  popup.addEventListener("click", (e) => { if (e.target === popup) closeStoryPopup(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeStoryPopup(); });
+}
 
 // Converts a bounding box from the map SVG's own coordinate space (the
 // same space latLngToMapPercent's svgX/svgY land in) into left/top/
