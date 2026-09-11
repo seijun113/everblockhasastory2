@@ -915,16 +915,35 @@ async function initCountryZoom() {
   function onPointerUp(e) {
     if (!dragState || dragState.pointerId !== e.pointerId) return;
     const wasDrag = dragState.moved;
+    const upX = e.clientX;
+    const upY = e.clientY;
     dragState = null;
     mapEl.classList.remove("is-dragging");
-    if (wasDrag) {
-      mapEl.addEventListener(
-        "click",
-        (ev) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-        },
-        { capture: true, once: true }
+
+    // Because mapEl held pointer capture for this gesture (for dragging),
+    // the browser will synthesize a "click" targeted at mapEl itself
+    // rather than whatever was actually under the pointer -- so it never
+    // reaches a pin, country, or state's own click listener. Swallow that
+    // misrouted click every time...
+    mapEl.addEventListener(
+      "click",
+      (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+      },
+      { capture: true, once: true }
+    );
+
+    if (wasDrag) return; // a real drag: no click should follow at all
+
+    // ...and, for a plain tap/click (no real drag happened), re-fire a
+    // real click event at whatever element is actually under the pointer,
+    // so pins/countries/states keep responding normally to taps once
+    // you're zoomed in.
+    const real = document.elementFromPoint(upX, upY);
+    if (real) {
+      real.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true, clientX: upX, clientY: upY })
       );
     }
   }
