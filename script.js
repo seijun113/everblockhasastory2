@@ -1299,7 +1299,6 @@ function initAccountPage() {
 
   const heroTitle = document.getElementById("account-hero-title");
   const heroSub = document.getElementById("account-hero-sub");
-  const nameInput = document.getElementById("acct-page-name");
   const emailInput = document.getElementById("acct-page-email");
   const passwordInput = document.getElementById("acct-page-password");
   const submitBtn = document.getElementById("acct-page-submit");
@@ -1324,6 +1323,10 @@ function initAccountPage() {
   const newPasswordInput = document.getElementById("new-password");
   const setNewPasswordBtn = document.getElementById("set-new-password-btn");
 
+  const chooseUsernamePanel = document.getElementById("choose-username-panel");
+  const chooseUsernameInput = document.getElementById("choose-username-input");
+  const chooseUsernameSubmit = document.getElementById("choose-username-submit");
+
   const editNameBtn = document.getElementById("edit-name-btn");
   const editNameForm = document.getElementById("edit-name-form");
   const newNameInput = document.getElementById("new-name-input");
@@ -1345,6 +1348,18 @@ function initAccountPage() {
     if (heroTitle) heroTitle.textContent = "Log In or Create an Account";
     if (heroSub) heroSub.textContent = "Sign in to check your verification status and see the stories you've posted.";
   }
+  function showChooseUsername() {
+    loggedOutView.style.display = "none";
+    loggedInView.style.display = "none";
+    if (forgotPasswordPanel) forgotPasswordPanel.style.display = "none";
+    if (newPasswordPanel) newPasswordPanel.style.display = "none";
+    if (chooseUsernamePanel) {
+      chooseUsernamePanel.style.display = "block";
+      if (chooseUsernameInput) chooseUsernameInput.value = "";
+    }
+    if (heroTitle) heroTitle.textContent = "Almost done";
+    if (heroSub) heroSub.textContent = "Pick a username to finish setting up your account.";
+  }
   function showLoggedIn(name) {
     loggedOutView.style.display = "none";
     loggedInView.style.display = "block";
@@ -1360,6 +1375,14 @@ function initAccountPage() {
       const res = await apiFetch("/api/auth/session");
       if (!res.ok) { clearTokens(); showLoggedOut(); return; }
       const data = await res.json();
+
+      if (!data.profile.name) {
+        // Fresh account (email+password signup, or first login after
+        // confirming email) — no username chosen yet. Force that step
+        // before showing the normal account view.
+        showChooseUsername();
+        return;
+      }
 
       showLoggedIn(data.profile.name);
       currentProfileName = data.profile.name || "";
@@ -1498,7 +1521,6 @@ function initAccountPage() {
 
   if (submitBtn) {
     submitBtn.addEventListener("click", async () => {
-      const name = (nameInput.value || "").trim();
       const email = (emailInput.value || "").trim();
       const password = (passwordInput.value || "").trim();
 
@@ -1522,7 +1544,7 @@ function initAccountPage() {
         let res = await fetch(API_BASE + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name || email.split("@")[0], email, password }),
+          body: JSON.stringify({ email, password }),
         });
         let data = await res.json();
 
@@ -1552,7 +1574,7 @@ function initAccountPage() {
     });
   }
 
-  [nameInput, emailInput, passwordInput].forEach((el) => {
+  [emailInput, passwordInput].forEach((el) => {
     if (!el) return;
     el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitBtn.click(); } });
   });
@@ -1758,6 +1780,42 @@ function initAccountPage() {
         savePasswordBtn.disabled = false;
         savePasswordBtn.textContent = originalLabel;
       }
+    });
+  }
+
+  // ---------- Choose username (shown once, right after signup) ----------
+  if (chooseUsernameSubmit) {
+    chooseUsernameSubmit.addEventListener("click", async () => {
+      const name = (chooseUsernameInput.value || "").trim();
+      if (!name) {
+        showToast("Enter a username.");
+        chooseUsernameInput.focus();
+        return;
+      }
+      const originalLabel = chooseUsernameSubmit.textContent;
+      chooseUsernameSubmit.disabled = true;
+      chooseUsernameSubmit.textContent = "Saving…";
+      try {
+        const res = await apiFetch("/api/users/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't save username.");
+        if (chooseUsernamePanel) chooseUsernamePanel.style.display = "none";
+        await renderState();
+      } catch (err) {
+        showToast(err.message || "Couldn't save username.");
+      } finally {
+        chooseUsernameSubmit.disabled = false;
+        chooseUsernameSubmit.textContent = originalLabel;
+      }
+    });
+  }
+  if (chooseUsernameInput) {
+    chooseUsernameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); chooseUsernameSubmit.click(); }
     });
   }
 
