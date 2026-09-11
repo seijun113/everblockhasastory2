@@ -121,6 +121,17 @@
           </div>
           <p style="color:var(--cream-dim); margin:0 0 12px;" id="account-email"></p>
           <span class="verified-pill" id="account-verified"></span>
+          <div style="margin-top:14px;">
+            <button type="button" id="change-password-btn" class="btn btn-outline" style="padding:3px 12px; font-size:0.72rem; font-weight:600;">Change Password</button>
+          </div>
+          <div id="change-password-form" style="display:none; margin-top:10px;">
+            <input type="password" id="change-password-input" placeholder="New password (at least 8 characters)" style="margin-bottom:8px; max-width:260px;">
+            <div style="display:flex; gap:8px;">
+              <button type="button" id="save-password-btn" class="btn btn-primary" style="padding:7px 16px; font-size:0.8rem;">Save</button>
+              <button type="button" id="cancel-password-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.8rem;">Cancel</button>
+            </div>
+            <p id="password-edit-hint" style="color:var(--cream-dim); font-size:0.78rem; margin:6px 0 0;"></p>
+          </div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <a id="view-public-profile-link" href="#" class="btn btn-outline">View Public Profile</a>
