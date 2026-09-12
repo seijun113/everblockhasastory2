@@ -205,6 +205,7 @@ function videoToStoryShape(v) {
     liked: !!v.liked,
     saved: !!v.saved,
     shareCount: v.shareCount || 0,
+    viewCount: v.viewCount || 0,
   };
 }
 
@@ -1000,6 +1001,7 @@ function storyCardHTML(s) {
         <span class="avatar">${escapeHtml(initials)}</span>
         <span>${escapeHtml(s.author || "Anonymous")}</span>
       </div>
+      <div style="margin-top:6px; font-size:0.78rem; color:var(--cream-dim); display:flex; align-items:center; gap:4px;">${eyeIcon()} ${formatCount(s.viewCount)} views</div>
     </div>
   </a>`;
 }
@@ -1053,6 +1055,28 @@ function bookmarkIcon(filled) {
 }
 function shareIcon() {
   return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
+}
+
+function eyeIcon() {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+}
+
+// Compact display for a count, e.g. 950 -> "950", 1200 -> "1.2k", 2500000 -> "2.5M".
+function formatCount(n) {
+  n = n || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return String(n);
+}
+
+// Records one view for a story, at most once per browser session (via
+// sessionStorage) so refreshing or revisiting the same tab doesn't inflate
+// the count. Fire-and-forget — never blocks or shows an error to the viewer.
+function recordStoryView(realId) {
+  const key = "viewed_" + realId;
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, "1");
+  apiFetch("/api/videos/" + encodeURIComponent(realId) + "/view", { method: "POST" }).catch(() => {});
 }
 
 function escapeHtml(str) {
