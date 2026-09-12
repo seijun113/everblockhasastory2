@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await trySyncOAuthSession();
   initShareGate();
   initShareForm();
+  initContactForm();
   initShop();
   initAccountNav();
   initAccountPage();
@@ -1262,6 +1263,52 @@ function initShareGate() {
 }
 
 // ---------- Share form (real Cloudflare Stream upload) ----------
+// ---------- Contact page form ----------
+function initContactForm() {
+  const form = document.getElementById("contact-form");
+  if (!form) return;
+  const submitBtn = document.getElementById("contact-submit-btn");
+  const nameInput = document.getElementById("c-name");
+  const emailInput = document.getElementById("c-email");
+  const topicInput = document.getElementById("c-topic");
+  const messageInput = document.getElementById("c-message");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const topic = topicInput.value;
+    const message = messageInput.value.trim();
+    if (!name || !email || !message) return;
+
+    const originalLabel = submitBtn ? submitBtn.textContent : "";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending...";
+    }
+    try {
+      const res = await apiFetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, topic, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Could not send your message. Please try again.");
+      }
+      showToast("Thanks — we'll be in touch soon.");
+      form.reset();
+    } catch (err) {
+      showToast(err.message || "Something went wrong. Please try again.");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    }
+  });
+}
+
 function initShareForm() {
   const form = document.getElementById("share-form");
   if (!form) return;
