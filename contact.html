@@ -44,7 +44,7 @@
 
 <section class="section section-dark" style="padding-top:20px;">
   <div class="container two-col">
-    <form class="form-card" onsubmit="event.preventDefault(); showToast('Thanks — we\'ll be in touch soon.');">
+    <form class="form-card" id="contact-form">
       <div class="field">
         <label for="c-name">Name</label>
         <input type="text" id="c-name" required>
@@ -66,7 +66,7 @@
         <label for="c-message">Message</label>
         <textarea id="c-message" required></textarea>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+      <button type="submit" class="btn btn-primary btn-block" id="contact-submit-btn">Send Message</button>
     </form>
 
     <div>
