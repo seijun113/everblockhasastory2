@@ -56,27 +56,13 @@
       <span class="map-credit">Map data: Natural Earth (public domain)</span>
       <button type="button" class="map-zoom-reset">✕ Reset View</button>
     </div>
-    <p style="text-align:center; color:var(--cream-dim); font-size:0.85rem; margin:0 0 50px;">Click a country to zoom in, or click a pin to preview a story.</p>
+    <p style="text-align:center; color:var(--cream-dim); font-size:0.85rem; margin:0 0 50px;">Click a country to zoom in, or click a pin to jump straight to that story.</p>
 
     <div class="section-head">
       <h2>Browse by country</h2>
     </div>
     <div class="map-list" id="map-country-list">
       <a href="share.html"><span><span class="map-dot" style="background:var(--gold);"></span>Add your country</span><span>+</span></a>
-    </div>
-
-    <!-- Story preview popup, shown on pin click -->
-    <div id="map-story-popup" class="map-story-popup-backdrop">
-      <div class="map-story-popup">
-        <button type="button" id="map-story-popup-close" class="map-story-popup-close" aria-label="Close">✕</button>
-        <div id="map-story-popup-media" class="map-story-popup-media"></div>
-        <div class="map-story-popup-body">
-          <span class="map-story-popup-loc" id="map-story-popup-loc"></span>
-          <h3 id="map-story-popup-title" style="margin:4px 0 6px; font-size:1.2rem;"></h3>
-          <p id="map-story-popup-author" style="color:var(--cream-dim); font-size:0.85rem; margin:0 0 16px;"></p>
-          <a href="#" id="map-story-popup-link" class="btn btn-primary btn-block">Watch Story</a>
-        </div>
-      </div>
     </div>
   </div>
 </section>
