@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAllStoryGrids();
   renderMapPins().then(initCountryZoom);
   initMapSearch();
-  initMapPinPopup();
+  initMapPinNavigation();
   wireCarousel();
   initGoogleButtons();
   await trySyncOAuthSession();
@@ -456,49 +456,23 @@ function initMapSearch() {
   });
 }
 
-// ---------- Map pin story preview popup ----------
-function openStoryPopup(story) {
-  const popup = document.getElementById("map-story-popup");
-  if (!popup) return;
-  const mediaEl = document.getElementById("map-story-popup-media");
-  const locEl = document.getElementById("map-story-popup-loc");
-  const titleEl = document.getElementById("map-story-popup-title");
-  const authorEl = document.getElementById("map-story-popup-author");
-  const linkEl = document.getElementById("map-story-popup-link");
-
-  if (mediaEl) {
-    mediaEl.style.backgroundImage = story.thumbnailUrl ? `url('${escapeAttr(story.thumbnailUrl)}')` : "";
-  }
-  if (locEl) locEl.textContent = story.location || story.country || "";
-  if (titleEl) titleEl.textContent = story.title || "Untitled Story";
-  if (authorEl) authorEl.textContent = story.author ? "by " + story.author : "";
-  if (linkEl) linkEl.href = "story.html?id=" + encodeURIComponent(story.id);
-
-  popup.classList.add("open");
-}
-function closeStoryPopup() {
-  const popup = document.getElementById("map-story-popup");
-  if (popup) popup.classList.remove("open");
-}
-function initMapPinPopup() {
-  const popup = document.getElementById("map-story-popup");
-  if (!popup) return; // not on map.html
-
+// ---------- Map pin click -> straight to that story's page ----------
+// Delegated (not attached per-pin) so it keeps working after
+// renderMapPins() rebuilds the pins on every refresh, and explicitly
+// navigates via JS rather than relying on the <a>'s own href: once
+// zoomed into a country, mapEl holds pointer capture for drag-to-pan,
+// which makes onPointerUp above re-fire a synthetic (non-trusted) click
+// on the real element under the pointer -- and a non-trusted click on a
+// link does NOT trigger the browser's default navigation, so this needs
+// to navigate explicitly to work in both the zoomed and non-zoomed case.
+function initMapPinNavigation() {
   document.addEventListener("click", (e) => {
     const pin = e.target.closest(".map-pin[data-auto-pin]");
     if (!pin) return;
     if (e.ctrlKey || e.metaKey || e.shiftKey) return; // let modified clicks open in a new tab as normal
-    const id = pin.getAttribute("data-story-id");
-    const story = id && mapPinStoriesById.get(id);
-    if (!story) return;
     e.preventDefault();
-    openStoryPopup(story);
+    window.location.href = pin.getAttribute("href");
   });
-
-  const closeBtn = document.getElementById("map-story-popup-close");
-  if (closeBtn) closeBtn.addEventListener("click", closeStoryPopup);
-  popup.addEventListener("click", (e) => { if (e.target === popup) closeStoryPopup(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeStoryPopup(); });
 }
 
 // Converts a bounding box from the map SVG's own coordinate space (the
