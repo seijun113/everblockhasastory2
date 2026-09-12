@@ -69,10 +69,14 @@
           </div>
         </div>
 
-        <div class="stat-row">
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
           <div class="stat-box">
             <div class="num" id="profile-story-count">0</div>
             <div class="label">Stories</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="profile-total-views">0</div>
+            <div class="label">Views</div>
           </div>
           <div class="stat-box">
             <div class="num" id="profile-follower-count">0</div>
@@ -156,6 +160,8 @@
 
       rawVideos = data.videos || [];
       document.getElementById("profile-story-count").textContent = rawVideos.length;
+      const totalViews = rawVideos.reduce((sum, v) => sum + (v.viewCount || 0), 0);
+      document.getElementById("profile-total-views").textContent = formatCount(totalViews);
 
       // ---- Bio ----
       const bioTextEl = document.getElementById("profile-bio-text");
