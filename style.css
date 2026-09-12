@@ -249,7 +249,7 @@ p { margin: 0 0 1em; }
   content: "";
   position: absolute;
   top: 50%; left: 50%;
-  width: 16px; height: 16px;
+  width: 26px; height: 26px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   animation: mapPinPulse 2.2s infinite;
@@ -276,7 +276,12 @@ p { margin: 0 0 1em; }
 .map-pin {
   position: absolute;
   display: block;
-  width: 16px; height: 16px;
+  /* Bumped up from 16px -- at the old size the actual clickable box was
+     too small to tap reliably, especially once zoomed in (see the note
+     below on --zoom-scale keeping this a CONSTANT screen size either
+     way). This is the real hit area, not just a visual size, since
+     there's no separate invisible hit-box layer here. */
+  width: 26px; height: 26px;
   border-radius: 50% 50% 50% 0;
   background: var(--pc, var(--orange));
   border: 2px solid var(--cream);
@@ -301,8 +306,8 @@ p { margin: 0 0 1em; }
 .map-pin::after {
   content: "";
   position: absolute;
-  top: 3px; left: 3px;
-  width: 6px; height: 6px;
+  top: 6px; left: 6px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: var(--ink);
 }
