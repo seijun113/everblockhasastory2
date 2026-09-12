@@ -37,23 +37,69 @@
 <section id="profile-found" class="section section-dark" style="padding-top:40px; display:none;">
   <div class="container" style="max-width:900px;">
 
-    <div class="form-card" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-      <div style="display:flex; align-items:center; gap:16px;">
-        <span class="avatar" id="profile-avatar" style="width:56px; height:56px; font-size:1.2rem;"></span>
-        <div>
-          <h1 id="profile-name" style="margin:0; font-size:1.6rem;">—</h1>
-          <p id="profile-joined" style="color:var(--cream-dim); margin:4px 0 0;"></p>
-          <p style="color:var(--cream-dim); margin:6px 0 0; font-size:0.9rem;">
-            <strong id="profile-follower-count">0</strong> followers &middot; <strong id="profile-following-count">0</strong> following
-          </p>
+    <div class="form-card" style="padding:0; overflow:hidden; max-width:none;">
+      <div style="height:120px; background:linear-gradient(120deg, var(--orange), var(--gold), var(--olive));"></div>
+      <div style="padding:0 32px 32px;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:-48px;">
+          <div style="display:flex; align-items:flex-end; gap:16px;">
+            <span class="avatar" id="profile-avatar" style="width:96px; height:96px; font-size:2rem; border:4px solid var(--panel);"></span>
+            <div style="padding-bottom:6px;">
+              <h1 id="profile-name" style="margin:0; font-size:1.6rem;">—</h1>
+              <p id="profile-joined" style="color:var(--cream-dim); margin:4px 0 0;"></p>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; padding-bottom:6px;">
+            <button type="button" id="share-profile-btn" class="btn btn-outline">Share Profile</button>
+            <button type="button" id="follow-btn" class="btn btn-primary">Follow</button>
+          </div>
+        </div>
+
+        <div id="profile-bio-view" style="margin-top:20px;">
+          <p id="profile-bio-text" style="color:var(--cream-dim); max-width:600px; white-space:pre-wrap;"></p>
+          <button type="button" id="edit-bio-btn" class="btn btn-outline" style="display:none; padding:6px 16px; font-size:0.85rem;">Edit Bio</button>
+        </div>
+        <div id="profile-bio-edit" style="display:none; margin-top:20px; max-width:500px;">
+          <div class="field" style="margin-bottom:8px;">
+            <textarea id="bio-input" maxlength="160" placeholder="Tell your story..."></textarea>
+            <p class="field-hint"><span id="bio-count">0</span>/160</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" id="save-bio-btn" class="btn btn-primary" style="padding:8px 20px; font-size:0.85rem;">Save</button>
+            <button type="button" id="cancel-bio-btn" class="btn btn-outline" style="padding:8px 20px; font-size:0.85rem;">Cancel</button>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-box">
+            <div class="num" id="profile-story-count">0</div>
+            <div class="label">Stories</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="profile-follower-count">0</div>
+            <div class="label">Followers</div>
+          </div>
+          <div class="stat-box">
+            <div class="num" id="profile-following-count">0</div>
+            <div class="label">Following</div>
+          </div>
+        </div>
+
+        <div id="profile-countries-wrap" style="margin-top:24px; display:none;">
+          <p style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--cream-dim); margin-bottom:10px;">Posting From</p>
+          <div id="profile-countries" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
         </div>
       </div>
-      <button type="button" id="follow-btn" class="btn btn-primary" style="padding:10px 22px;">Follow</button>
     </div>
 
     <div style="margin-top:40px;">
-      <h2 style="font-size:1.4rem;">Stories</h2>
-      <p id="profile-stories-empty" style="color:var(--cream-dim); display:none;">No stories posted yet.</p>
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <h2 style="font-size:1.4rem; margin:0;">Stories</h2>
+        <select id="story-sort" class="chip" style="cursor:pointer;">
+          <option value="newest">Newest</option>
+          <option value="liked">Most Liked</option>
+        </select>
+      </div>
+      <p id="profile-stories-empty" style="color:var(--cream-dim); display:none; margin-top:20px;">No stories posted yet.</p>
       <div id="profile-stories-grid" class="story-grid" style="margin-top:20px;"></div>
     </div>
 
@@ -89,6 +135,8 @@
       return;
     }
 
+    let rawVideos = [];
+
     try {
       const res = await apiFetch("/api/users/" + encodeURIComponent(userId));
       const data = await res.json();
@@ -106,6 +154,79 @@
       document.getElementById("profile-follower-count").textContent = data.followerCount || 0;
       document.getElementById("profile-following-count").textContent = data.followingCount || 0;
 
+      rawVideos = data.videos || [];
+      document.getElementById("profile-story-count").textContent = rawVideos.length;
+
+      // ---- Bio ----
+      const bioTextEl = document.getElementById("profile-bio-text");
+      const bioViewEl = document.getElementById("profile-bio-view");
+      const bioEditEl = document.getElementById("profile-bio-edit");
+      const editBioBtn = document.getElementById("edit-bio-btn");
+      const bioInput = document.getElementById("bio-input");
+      const bioCount = document.getElementById("bio-count");
+
+      function renderBioText(bio) {
+        if (bio) {
+          bioTextEl.textContent = bio;
+          bioTextEl.style.display = "block";
+        } else if (data.isSelf) {
+          bioTextEl.textContent = "No bio yet.";
+          bioTextEl.style.display = "block";
+        } else {
+          bioTextEl.style.display = "none";
+        }
+      }
+      renderBioText(data.profile.bio);
+
+      if (data.isSelf) {
+        editBioBtn.style.display = "inline-flex";
+        editBioBtn.addEventListener("click", () => {
+          bioInput.value = data.profile.bio || "";
+          bioCount.textContent = bioInput.value.length;
+          bioViewEl.style.display = "none";
+          bioEditEl.style.display = "block";
+          bioInput.focus();
+        });
+        bioInput.addEventListener("input", () => {
+          bioCount.textContent = bioInput.value.length;
+        });
+        document.getElementById("cancel-bio-btn").addEventListener("click", () => {
+          bioEditEl.style.display = "none";
+          bioViewEl.style.display = "block";
+        });
+        document.getElementById("save-bio-btn").addEventListener("click", async () => {
+          const newBio = bioInput.value.trim();
+          try {
+            const res2 = await apiFetch("/api/users/me", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bio: newBio }),
+            });
+            const data2 = await res2.json();
+            if (!res2.ok) throw new Error(data2.error || "Couldn't update bio.");
+            data.profile.bio = data2.profile.bio;
+            renderBioText(data.profile.bio);
+            bioEditEl.style.display = "none";
+            bioViewEl.style.display = "block";
+            showToast("Bio updated.");
+          } catch (err) {
+            showToast(err.message || "Couldn't update bio.");
+          }
+        });
+      }
+
+      // ---- Share profile ----
+      document.getElementById("share-profile-btn").addEventListener("click", async () => {
+        const url = window.location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast("Profile link copied!");
+        } catch (e) {
+          showToast(url);
+        }
+      });
+
+      // ---- Follow ----
       const followBtn = document.getElementById("follow-btn");
       if (data.isSelf) {
         followBtn.style.display = "none";
@@ -135,14 +256,39 @@
         });
       }
 
+      // ---- Countries ----
+      const countryNames = [...new Set(rawVideos.map((v) => (v.country || "").trim()).filter(Boolean))];
+      if (countryNames.length) {
+        const countriesEl = document.getElementById("profile-countries");
+        countriesEl.innerHTML = countryNames.map((name) => {
+          const code = NAME_TO_CODE[name.toLowerCase()];
+          const flag = code ? countryCodeToFlag(code) : "🌍";
+          return `<span class="chip">${flag} ${escapeHtml(name)}</span>`;
+        }).join("");
+        document.getElementById("profile-countries-wrap").style.display = "block";
+      }
+
+      // ---- Stories grid (sortable) ----
       const grid = document.getElementById("profile-stories-grid");
       const emptyEl = document.getElementById("profile-stories-empty");
-      const videos = (data.videos || []).map(videoToStoryShape);
-      if (!videos.length) {
-        if (emptyEl) emptyEl.style.display = "block";
-      } else {
-        grid.innerHTML = videos.map(storyCardHTML).join("");
+      const sortSelect = document.getElementById("story-sort");
+
+      function renderStories() {
+        if (!rawVideos.length) {
+          if (emptyEl) emptyEl.style.display = "block";
+          grid.innerHTML = "";
+          return;
+        }
+        const sorted = [...rawVideos].sort((a, b) => {
+          if (sortSelect.value === "liked") {
+            return (b.likeCount || 0) - (a.likeCount || 0);
+          }
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+        grid.innerHTML = sorted.map(videoToStoryShape).map(storyCardHTML).join("");
       }
+      sortSelect.addEventListener("change", renderStories);
+      renderStories();
 
       foundEl.style.display = "block";
     } catch (err) {
