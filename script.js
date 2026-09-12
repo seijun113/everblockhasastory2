@@ -548,11 +548,16 @@ async function initCountryZoom() {
   grad.setAttribute("y1", "0");
   grad.setAttribute("x2", "360");
   grad.setAttribute("y2", "63");
+  // A couple of extra in-between stops beyond the original 5 give the
+  // landmass a bit more tonal variation/richness across the gradient's
+  // diagonal sweep, instead of long flat stretches of a single color.
   [
     [0, "var(--gold)"],
-    [24, "var(--olive-light)"],
-    [46, "var(--olive)"],
+    [18, "var(--olive-light)"],
+    [32, "var(--olive)"],
+    [50, "#6b5a35"],
     [68, "#7a4a2a"],
+    [84, "var(--orange-dark)"],
     [100, "var(--gold)"],
   ].forEach(([pct, color]) => {
     const stop = document.createElementNS(svgNS, "stop");
