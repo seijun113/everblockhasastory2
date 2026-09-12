@@ -248,12 +248,19 @@ p { margin: 0 0 1em; }
 .map-pin::before {
   content: "";
   position: absolute;
+  /* Also doubles as the pin's actual tap target: it's invisible outside
+     the pulse-ring animation, but it's a real hit-testable box (not
+     pointer-events:none like a purely decorative overlay would be), so
+     clicking/tapping anywhere in this generously-sized area -- not just
+     the small 16px marker itself -- still registers as clicking the pin.
+     Centered on the marker's round head rather than its exact pointed
+     tip, but at this size it comfortably covers the tip too. */
   top: 50%; left: 50%;
-  width: 26px; height: 26px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   animation: mapPinPulse 2.2s infinite;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .hero-map svg { width: 100%; height: 100%; }
 .worldmap-base {
@@ -276,12 +283,11 @@ p { margin: 0 0 1em; }
 .map-pin {
   position: absolute;
   display: block;
-  /* Bumped up from 16px -- at the old size the actual clickable box was
-     too small to tap reliably, especially once zoomed in (see the note
-     below on --zoom-scale keeping this a CONSTANT screen size either
-     way). This is the real hit area, not just a visual size, since
-     there's no separate invisible hit-box layer here. */
-  width: 26px; height: 26px;
+  /* Kept at the original precise 16px for visual accuracy -- the actual
+     easier-to-tap hit area lives on ::before below instead of on this
+     element itself, so making the marker look bigger/less pinpoint no
+     longer has to be the tradeoff for making it easier to click. */
+  width: 16px; height: 16px;
   border-radius: 50% 50% 50% 0;
   background: var(--pc, var(--orange));
   border: 2px solid var(--cream);
@@ -306,8 +312,8 @@ p { margin: 0 0 1em; }
 .map-pin::after {
   content: "";
   position: absolute;
-  top: 6px; left: 6px;
-  width: 10px; height: 10px;
+  top: 3px; left: 3px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--ink);
 }
