@@ -1079,6 +1079,169 @@ function recordStoryView(realId) {
   apiFetch("/api/videos/" + encodeURIComponent(realId) + "/view", { method: "POST" }).catch(() => {});
 }
 
+// ---------- Full-screen swipe feed (feed.html) ----------
+function feedSlideHTML(s) {
+  const initials = (s.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
+  const fallback = s.thumbnailUrl
+    ? `<div class="feed-fallback" style="background-image:url('${escapeAttr(s.thumbnailUrl)}');"></div>`
+    : `<div class="feed-fallback" style="background:linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
+  return `
+  <div class="feed-slide" data-video-id="${escapeAttr(s.id)}" data-video-src="${escapeAttr(s.videoUrl || "")}">
+    ${fallback}
+    <div class="feed-gradient"></div>
+    <div class="feed-info">
+      <a class="feed-author" href="${s.profileId ? "profile.html?id=" + encodeURIComponent(s.profileId) : "#"}">
+        <span class="avatar" style="width:32px; height:32px; font-size:0.85rem; border:2px solid var(--cream); border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;">${escapeHtml(initials)}</span>
+        ${escapeHtml(s.author || "Anonymous")}
+      </a>
+      <div class="feed-title">${escapeHtml(s.title || "Untitled Story")}</div>
+      ${s.caption ? `<div class="feed-caption">${escapeHtml(s.caption)}</div>` : ""}
+      <div class="feed-loc">${pinIcon()} ${escapeHtml(s.location || "")}</div>
+    </div>
+    <div class="feed-actions">
+      <button type="button" class="feed-action-btn feed-like-btn${s.liked ? " engagement-active" : ""}" data-action="like">
+        <span class="feed-action-icon feed-like-icon">${heartIcon(!!s.liked)}</span>
+        <span class="feed-like-count">${formatCount(s.likeCount || 0)}</span>
+      </button>
+      <button type="button" class="feed-action-btn feed-save-btn${s.saved ? " engagement-active" : ""}" data-action="save">
+        <span class="feed-action-icon feed-save-icon">${bookmarkIcon(!!s.saved)}</span>
+        <span>Save</span>
+      </button>
+      <button type="button" class="feed-action-btn feed-share-btn" data-action="share">
+        <span class="feed-action-icon">${shareIcon()}</span>
+        <span class="feed-share-count">${formatCount(s.shareCount || 0)}</span>
+      </button>
+      <a class="feed-action-btn" href="story.html?id=${encodeURIComponent(s.id)}">
+        <span class="feed-action-icon">${eyeIcon()}</span>
+        <span>${formatCount(s.viewCount || 0)}</span>
+      </a>
+    </div>
+  </div>`;
+}
+
+// Lazily mounts/unmounts each slide's Cloudflare Stream iframe as it scrolls
+// into/out of view, so only the visible video is ever actually playing —
+// keeps the feed light instead of autoplaying every video at once.
+function initFeedPlayback(container) {
+  const slides = Array.from(container.querySelectorAll(".feed-slide"));
+  if (!slides.length) return;
+
+  function activate(slide) {
+    if (slide.querySelector("iframe")) return;
+    const src = slide.getAttribute("data-video-src");
+    if (!src) return;
+    const iframe = document.createElement("iframe");
+    const sep = src.includes("?") ? "&" : "?";
+    iframe.src = src + sep + "autoplay=true&muted=true&loop=true&controls=false&preload=auto";
+    iframe.setAttribute("allow", "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;");
+    iframe.setAttribute("allowfullscreen", "");
+    slide.insertBefore(iframe, slide.firstChild);
+
+    const id = slide.getAttribute("data-video-id") || "";
+    if (id.startsWith("v_")) recordStoryView(id.slice(2));
+  }
+
+  function deactivate(slide) {
+    const iframe = slide.querySelector("iframe");
+    if (iframe) iframe.remove();
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+        activate(entry.target);
+      } else {
+        deactivate(entry.target);
+      }
+    });
+  }, { root: container, threshold: [0, 0.6, 1] });
+
+  slides.forEach((slide) => observer.observe(slide));
+
+  // The observer's first callback can land a frame late — start the very
+  // first slide immediately so the feed feels instant on load.
+  activate(slides[0]);
+}
+
+// Wires the like/save/share buttons on every feed slide. Views are handled
+// separately by initFeedPlayback (recorded the moment a slide autoplays).
+function initFeedActions(container, videos) {
+  const byId = {};
+  videos.forEach((v) => { byId[v.id] = v; });
+
+  container.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".feed-action-btn[data-action]");
+    if (!btn) return;
+    e.preventDefault();
+    const slide = btn.closest(".feed-slide");
+    const id = slide && slide.getAttribute("data-video-id");
+    const video = id && byId[id];
+    if (!video || !String(video.id).startsWith("v_")) return;
+    const realId = String(video.id).slice(2);
+    const action = btn.getAttribute("data-action");
+
+    if (action === "like") {
+      const { access } = getTokens();
+      if (!access) { showToast("Log in to like stories."); return; }
+      btn.disabled = true;
+      try {
+        const res = await apiFetch("/api/videos/" + encodeURIComponent(realId) + "/like", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't update like.");
+        video.liked = data.liked;
+        video.likeCount = data.likeCount;
+        btn.querySelector(".feed-like-icon").innerHTML = heartIcon(video.liked);
+        btn.querySelector(".feed-like-count").textContent = formatCount(video.likeCount);
+        btn.classList.toggle("engagement-active", video.liked);
+      } catch (err) {
+        showToast(err.message || "Couldn't update like.");
+      } finally {
+        btn.disabled = false;
+      }
+    } else if (action === "save") {
+      const { access } = getTokens();
+      if (!access) { showToast("Log in to save stories."); return; }
+      btn.disabled = true;
+      try {
+        const res = await apiFetch("/api/videos/" + encodeURIComponent(realId) + "/save", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't update save.");
+        video.saved = data.saved;
+        btn.querySelector(".feed-save-icon").innerHTML = bookmarkIcon(video.saved);
+        btn.classList.toggle("engagement-active", video.saved);
+        showToast(video.saved ? "Saved to your account." : "Removed from saved.");
+      } catch (err) {
+        showToast(err.message || "Couldn't update save.");
+      } finally {
+        btn.disabled = false;
+      }
+    } else if (action === "share") {
+      const url = window.location.origin + "/story.html?id=" + encodeURIComponent(video.id);
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: video.title || "Every Block Has a Story", url });
+        } else {
+          await navigator.clipboard.writeText(url);
+          showToast("Link copied!");
+        }
+      } catch (shareErr) {
+        // User closed the native share sheet — not an error.
+      }
+      try {
+        const res = await apiFetch("/api/videos/" + encodeURIComponent(realId) + "/share", { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+          video.shareCount = data.shareCount;
+          const countEl = btn.querySelector(".feed-share-count");
+          if (countEl) countEl.textContent = formatCount(video.shareCount);
+        }
+      } catch (shareCountErr) {
+        // Non-fatal — the share itself already happened.
+      }
+    }
+  });
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
 }
