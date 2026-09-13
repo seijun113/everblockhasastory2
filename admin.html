@@ -174,6 +174,7 @@
         <span class="story-loc" style="position:static; display:inline-flex;">${escapeHtml(v.location || "")}</span>
         <h3 style="margin:10px 0 4px;">${escapeHtml(v.title || "Untitled")}</h3>
         <div style="color:var(--cream-dim); font-size:0.85rem; margin-bottom:10px;">By ${escapeHtml(v.author || "Anonymous")} &middot; ${escapeHtml(when)} &middot; status: <strong>${escapeHtml(v.status)}</strong></div>
+        ${v.ai_reason ? `<div style="color:var(--cream-dim); font-size:0.8rem; margin-bottom:10px; display:flex; gap:6px; align-items:flex-start;"><span>🤖</span><span>AI review: ${escapeHtml(v.ai_reason)}</span></div>` : ""}
         ${v.ip ? `<div style="color:var(--cream-dim); font-size:0.8rem; margin-bottom:10px;">IP: <code>${escapeHtml(v.ip)}</code></div>` : ""}
         <p style="color:var(--cream-dim); font-size:0.95rem; margin-bottom:16px;">${escapeHtml(v.caption || "")}</p>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
