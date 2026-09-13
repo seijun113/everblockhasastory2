@@ -1497,14 +1497,23 @@ function initShareForm() {
       const saveData = await saveRes.json();
       if (!saveRes.ok) throw new Error(saveData.error || "Couldn't save your story.");
 
-      showToast("Your story is submitted!");
-      if (postCountLine) {
-        postCountLine.textContent = "Thanks for sharing — new videos are reviewed before they appear publicly, so it may take a little while to show up.";
-      }
+      const finalStatus = saveData.video && saveData.video.status;
+      showToast(saveData.message || "Your story is submitted!");
 
       resetForm();
       form.style.display = "none";
       if (successPanel) {
+        const titleEl = successPanel.querySelector("h2");
+        if (finalStatus === "approved") {
+          if (titleEl) titleEl.textContent = "Your Story Is Live!";
+          if (postCountLine) postCountLine.textContent = "It passed review and is already visible on the site.";
+        } else if (finalStatus === "rejected") {
+          if (titleEl) titleEl.textContent = "Story Not Approved";
+          if (postCountLine) postCountLine.textContent = saveData.message || "This story didn't pass review.";
+        } else {
+          if (titleEl) titleEl.textContent = "Your Story Is Submitted!";
+          if (postCountLine) postCountLine.textContent = "Thanks for sharing — new videos are reviewed before they appear publicly, so it may take a little while to show up.";
+        }
         successPanel.style.display = "block";
         successPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
