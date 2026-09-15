@@ -74,6 +74,7 @@
           <div style="display:flex; gap:10px; padding-bottom:6px;">
             <button type="button" id="share-profile-btn" class="btn btn-outline">Share Profile</button>
             <button type="button" id="follow-btn" class="btn btn-primary">Follow</button>
+            <button type="button" id="report-profile-btn" class="btn btn-outline" style="display:none;">Report</button>
           </div>
         </div>
 
@@ -320,9 +321,14 @@
 
       // ---- Follow ----
       const followBtn = document.getElementById("follow-btn");
+      const reportProfileBtn = document.getElementById("report-profile-btn");
       if (data.isSelf) {
         followBtn.style.display = "none";
       } else {
+        if (reportProfileBtn) {
+          reportProfileBtn.style.display = "inline-flex";
+          reportProfileBtn.addEventListener("click", () => openReportModal("profile", userId));
+        }
         let following = !!data.isFollowing;
         function renderFollow() {
           followBtn.textContent = following ? "Following" : "Follow";
