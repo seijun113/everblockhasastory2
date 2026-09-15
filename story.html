@@ -91,6 +91,9 @@
         <button type="button" id="share-btn" class="btn btn-outline" style="padding:8px 16px; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
           <span id="share-icon"></span> Share <span id="share-count">0</span>
         </button>
+        <button type="button" id="report-story-btn" class="btn btn-outline" style="padding:8px 16px; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+          <span id="report-icon"></span> Report
+        </button>
       </div>
       <p id="story-body" style="color:var(--cream-dim); font-size:1.05rem; line-height:1.7;"></p>
       <div class="info-box" style="margin-top:24px;">
@@ -224,6 +227,10 @@
       recordStoryView(realId);
       initStoryComments(realId);
       initStoryEngagement(realId, story);
+      const reportIconEl = document.getElementById("report-icon");
+      if (reportIconEl) reportIconEl.innerHTML = flagIcon();
+      const reportBtn = document.getElementById("report-story-btn");
+      if (reportBtn) reportBtn.addEventListener("click", () => openReportModal("video", realId));
     } else {
       const engagementEl = document.getElementById("story-engagement");
       if (engagementEl) engagementEl.style.display = "none";
