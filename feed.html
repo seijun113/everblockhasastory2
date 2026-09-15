@@ -42,6 +42,17 @@
     aspect-ratio: 9 / 16;
     background: #000;
   }
+  /* Phones keep the tall TikTok-style 9:16 frame above. On tablets/desktops
+     there's plenty of horizontal room, so flip the frame to a wide 16:9
+     landscape box instead of a narrow vertical strip with huge black bars
+     down the sides. */
+  @media (min-width: 820px) {
+    .feed-video-wrap {
+      max-width: calc(100vh * 16 / 9);
+      max-height: calc(100vw * 9 / 16);
+      aspect-ratio: 16 / 9;
+    }
+  }
   .feed-slide iframe {
     position: absolute; inset: 0; width: 100%; height: 100%; border: none;
     z-index: 1;
