@@ -96,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initShop();
   initAccountNav();
   initAccountPage();
+  initReportModal();
   document.querySelectorAll(".chip[data-filter]").forEach((chip) => {
     chip.addEventListener("click", () => filterStories(chip.getAttribute("data-filter")));
   });
@@ -1056,6 +1057,10 @@ function bookmarkIcon(filled) {
 function shareIcon() {
   return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 }
+
+function flagIcon() {
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="3"/></svg>`;
+}
 function commentIcon() {
   return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
 }
@@ -1117,6 +1122,10 @@ function feedSlideHTML(s) {
       <button type="button" class="feed-action-btn feed-share-btn" data-action="share">
         <span class="feed-action-icon">${shareIcon()}</span>
         <span class="feed-share-count">${formatCount(s.shareCount || 0)}</span>
+      </button>
+      <button type="button" class="feed-action-btn" data-action="report">
+        <span class="feed-action-icon">${flagIcon()}</span>
+        <span>Report</span>
       </button>
       <a class="feed-action-btn" href="story.html?id=${encodeURIComponent(s.id)}">
         <span class="feed-action-icon">${eyeIcon()}</span>
@@ -1391,8 +1400,125 @@ function initFeedActions(container, videos) {
       } catch (shareCountErr) {
         // Non-fatal — the share itself already happened.
       }
+    } else if (action === "report") {
+      openReportModal("video", realId);
     }
   });
+}
+
+// ---------- Report content (video / comment / profile) ----------
+// One shared modal, injected into the page on first use, reused by every
+// Report button across the site (feed slides, story page, profile page,
+// comments). Requires login — reports are tied to the reporting account.
+const REPORT_REASONS = [
+  "Spam or scam",
+  "Harassment or bullying",
+  "Inappropriate or explicit content",
+  "Impersonation",
+  "Something else",
+];
+
+function initReportModal() {
+  if (document.getElementById("report-modal-overlay")) {
+    wireReportDelegation();
+    return;
+  }
+  const overlay = document.createElement("div");
+  overlay.id = "report-modal-overlay";
+  overlay.style.cssText = "position:fixed; inset:0; z-index:70; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; padding:20px;";
+  overlay.innerHTML = `
+    <div style="background:var(--panel); width:100%; max-width:420px; border-radius:14px; padding:22px 24px; box-sizing:border-box;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h3 style="margin:0; font-size:1.1rem; color:var(--cream);">Report</h3>
+        <button type="button" id="report-modal-close" style="background:none; border:none; color:var(--cream-dim); font-size:1.3rem; cursor:pointer; line-height:1; padding:4px;">&times;</button>
+      </div>
+      <div id="report-modal-reasons" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+        ${REPORT_REASONS.map((r, i) => `
+          <label style="display:flex; align-items:center; gap:8px; color:var(--cream-dim); font-size:0.9rem; cursor:pointer;">
+            <input type="radio" name="report-reason" value="${escapeAttr(r)}" ${i === 0 ? "checked" : ""}>
+            ${escapeHtml(r)}
+          </label>`).join("")}
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <textarea id="report-details-input" placeholder="Add details (optional)" maxlength="1000" style="min-height:70px;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" id="report-modal-cancel" class="btn btn-outline" style="padding:8px 18px; font-size:0.85rem;">Cancel</button>
+        <button type="button" id="report-modal-submit" class="btn btn-primary" style="padding:8px 18px; font-size:0.85rem;">Submit Report</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const closeBtn = document.getElementById("report-modal-close");
+  const cancelBtn = document.getElementById("report-modal-cancel");
+  const submitBtn = document.getElementById("report-modal-submit");
+  const detailsInput = document.getElementById("report-details-input");
+
+  function close() {
+    overlay.style.display = "none";
+    window.__reportTarget = null;
+  }
+  closeBtn.addEventListener("click", close);
+  cancelBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+  submitBtn.addEventListener("click", async () => {
+    const target = window.__reportTarget;
+    if (!target) { close(); return; }
+    const reasonInput = overlay.querySelector('input[name="report-reason"]:checked');
+    const reason = reasonInput ? reasonInput.value : "Something else";
+    const details = (detailsInput.value || "").trim();
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+    try {
+      const res = await apiFetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: target.type, targetId: target.id, reason, details }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't submit report.");
+      showToast("Report submitted — thank you.");
+      detailsInput.value = "";
+      close();
+    } catch (err) {
+      showToast(err.message || "Couldn't submit report.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
+  });
+
+  wireReportDelegation();
+}
+
+// Delegated so it works no matter which page/container a Report button for
+// a comment renders into (story.html's comment list, feed.html's comment
+// sheet) without wiring it in two separate places.
+let __reportDelegationWired = false;
+function wireReportDelegation() {
+  if (__reportDelegationWired) return;
+  __reportDelegationWired = true;
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".report-comment-btn");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    if (id) openReportModal("comment", id);
+  });
+}
+
+function openReportModal(type, id) {
+  const { access } = getTokens();
+  if (!access) { showToast("Log in to report content."); return; }
+  const overlay = document.getElementById("report-modal-overlay");
+  if (!overlay) return;
+  window.__reportTarget = { type, id };
+  const detailsInput = document.getElementById("report-details-input");
+  if (detailsInput) detailsInput.value = "";
+  const firstRadio = overlay.querySelector('input[name="report-reason"]');
+  if (firstRadio) firstRadio.checked = true;
+  overlay.style.display = "flex";
 }
 
 function escapeHtml(str) {
@@ -2696,14 +2822,14 @@ function commentHTML(c, currentUserId) {
   const isMine = currentUserId && c.profile_id === currentUserId;
   const deleteLink = isMine
     ? `<button type="button" class="delete-comment-btn" data-id="${escapeAttr(c.id)}" style="background:none; border:none; color:var(--orange); font-size:0.8rem; font-weight:600; cursor:pointer; padding:0;">Delete</button>`
-    : "";
+    : `<button type="button" class="report-comment-btn" data-id="${escapeAttr(c.id)}" style="background:none; border:none; color:var(--cream-dim); font-size:0.8rem; font-weight:600; cursor:pointer; padding:0;">Report</button>`;
   return `
   <div style="border-bottom:1px solid var(--line); padding-bottom:14px;">
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
       <span class="avatar" style="width:30px; height:30px; font-size:0.75rem; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">${escapeHtml(initials)}</span>
       <strong style="font-size:0.9rem;">${escapeHtml(c.author || "Anonymous")}</strong>
       <span style="color:var(--cream-dim); font-size:0.8rem;">${escapeHtml(when)}</span>
-      ${deleteLink ? `<span style="margin-left:auto;">${deleteLink}</span>` : ""}
+      <span style="margin-left:auto;">${deleteLink}</span>
     </div>
     <p style="color:var(--cream-dim); margin:0; font-size:0.95rem; line-height:1.5;">${escapeHtml(c.body || "")}</p>
   </div>`;
