@@ -1056,6 +1056,9 @@ function bookmarkIcon(filled) {
 function shareIcon() {
   return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 }
+function commentIcon() {
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
+}
 
 function eyeIcon() {
   return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -1102,6 +1105,10 @@ function feedSlideHTML(s) {
       <button type="button" class="feed-action-btn feed-like-btn${s.liked ? " engagement-active" : ""}" data-action="like">
         <span class="feed-action-icon feed-like-icon">${heartIcon(!!s.liked)}</span>
         <span class="feed-like-count">${formatCount(s.likeCount || 0)}</span>
+      </button>
+      <button type="button" class="feed-action-btn feed-comment-btn" data-action="comment">
+        <span class="feed-action-icon">${commentIcon()}</span>
+        <span class="feed-comment-count">Comment</span>
       </button>
       <button type="button" class="feed-action-btn feed-save-btn${s.saved ? " engagement-active" : ""}" data-action="save">
         <span class="feed-action-icon feed-save-icon">${bookmarkIcon(!!s.saved)}</span>
@@ -1163,6 +1170,150 @@ function initFeedPlayback(container) {
   // The observer's first callback can land a frame late — start the very
   // first slide immediately so the feed feels instant on load.
   activate(slides[0]);
+}
+
+// Wires a shared bottom-sheet comment panel to every feed slide's comment
+// button. One overlay is reused for whichever video's button was tapped,
+// rather than duplicating a full comment list/form per slide. Reuses the
+// same /api/videos/:id/comments endpoints and commentHTML() renderer as
+// story.html's comment section.
+function initFeedComments(container) {
+  const overlay = document.getElementById("feed-comments-overlay");
+  if (!overlay) return;
+  const listEl = document.getElementById("feed-comments-list");
+  const emptyEl = document.getElementById("feed-comments-empty");
+  const loggedInBox = document.getElementById("feed-comment-form-logged-in");
+  const loggedOutBox = document.getElementById("feed-comment-form-logged-out");
+  const input = document.getElementById("feed-comment-input");
+  const submitBtn = document.getElementById("feed-comment-submit-btn");
+  const closeBtn = document.getElementById("feed-comments-close");
+
+  let activeVideoId = null; // real id, no "v_" prefix
+  let activeBtn = null;
+  let currentUserId = null;
+
+  function close() {
+    overlay.style.display = "none";
+    activeVideoId = null;
+    activeBtn = null;
+  }
+
+  async function ensureUser() {
+    const { access } = getTokens();
+    if (loggedInBox) loggedInBox.style.display = access ? "flex" : "none";
+    if (loggedOutBox) loggedOutBox.style.display = access ? "none" : "block";
+    if (!access) { currentUserId = null; return; }
+    try {
+      const res = await apiFetch("/api/auth/session");
+      if (res.ok) {
+        const data = await res.json();
+        currentUserId = data.user.id;
+      }
+    } catch (e) {
+      // Not fatal — comments just won't show a Delete option.
+    }
+  }
+
+  function wireDeleteButtons() {
+    listEl.querySelectorAll(".delete-comment-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!window.confirm("Delete this comment? This can't be undone.")) return;
+        try {
+          const res = await apiFetch("/api/comments/" + encodeURIComponent(id), { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Couldn't delete that comment.");
+          await loadComments();
+        } catch (err) {
+          showToast(err.message || "Couldn't delete that comment.");
+        }
+      });
+    });
+  }
+
+  async function loadComments() {
+    if (!activeVideoId) return;
+    try {
+      const res = await fetch(API_BASE + "/api/videos/" + encodeURIComponent(activeVideoId) + "/comments");
+      if (!res.ok) return;
+      const data = await res.json();
+      const comments = data.comments || [];
+      if (!comments.length) {
+        listEl.innerHTML = "";
+        if (emptyEl) emptyEl.style.display = "block";
+      } else {
+        if (emptyEl) emptyEl.style.display = "none";
+        listEl.innerHTML = comments.map((c) => commentHTML(c, currentUserId)).join("");
+        wireDeleteButtons();
+      }
+      if (activeBtn) {
+        const countEl = activeBtn.querySelector(".feed-comment-count");
+        if (countEl) countEl.textContent = comments.length ? formatCount(comments.length) : "Comment";
+      }
+    } catch (e) {
+      // Silent — a failed refresh just keeps showing the last known comments.
+    }
+  }
+
+  async function open(videoId, btn) {
+    activeVideoId = videoId;
+    activeBtn = btn;
+    overlay.style.display = "flex";
+    if (input) input.value = "";
+    listEl.innerHTML = "";
+    if (emptyEl) emptyEl.style.display = "none";
+    await ensureUser();
+    await loadComments();
+  }
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest('[data-action="comment"]');
+    if (!btn) return;
+    const slide = btn.closest(".feed-slide");
+    if (!slide) return;
+    const id = (slide.getAttribute("data-video-id") || "").replace(/^v_/, "");
+    if (!id) return;
+    open(id, btn);
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  if (submitBtn) {
+    submitBtn.addEventListener("click", async () => {
+      const text = (input.value || "").trim();
+      if (!text) { showToast("Write something first."); return; }
+      if (!activeVideoId) return;
+      const { access } = getTokens();
+      if (!access) { showToast("Log in to comment."); return; }
+      const originalLabel = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Posting…";
+      try {
+        const res = await apiFetch("/api/videos/" + encodeURIComponent(activeVideoId) + "/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't post your comment.");
+        input.value = "";
+        await loadComments();
+      } catch (err) {
+        showToast(err.message || "Couldn't post your comment.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    });
+  }
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); submitBtn.click(); }
+    });
+  }
 }
 
 // Wires the like/save/share buttons on every feed slide. Views are handled
