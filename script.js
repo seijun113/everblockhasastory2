@@ -1087,7 +1087,7 @@ function feedSlideHTML(s) {
     : `<div class="feed-fallback" style="background:linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
   return `
   <div class="feed-slide" data-video-id="${escapeAttr(s.id)}" data-video-src="${escapeAttr(s.videoUrl || "")}">
-    ${fallback}
+    <div class="feed-video-wrap">${fallback}</div>
     <div class="feed-gradient"></div>
     <div class="feed-info">
       <a class="feed-author" href="${s.profileId ? "profile.html?id=" + encodeURIComponent(s.profileId) : "#"}">
@@ -1135,7 +1135,9 @@ function initFeedPlayback(container) {
     iframe.src = src + sep + "autoplay=true&muted=true&loop=true&controls=false&preload=auto";
     iframe.setAttribute("allow", "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;");
     iframe.setAttribute("allowfullscreen", "");
-    slide.insertBefore(iframe, slide.firstChild);
+    const wrap = slide.querySelector(".feed-video-wrap");
+    if (wrap) wrap.appendChild(iframe);
+    else slide.insertBefore(iframe, slide.firstChild);
 
     const id = slide.getAttribute("data-video-id") || "";
     if (id.startsWith("v_")) recordStoryView(id.slice(2));
