@@ -204,6 +204,13 @@ p { margin: 0 0 1em; }
 }
 .nav-account-link:hover, .nav-account-link.active { color: var(--cream); border-color: var(--orange); }
 
+.nav-search-link {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cream-dim);
+  transition: color 0.15s;
+}
+.nav-search-link:hover, .nav-search-link.active { color: var(--orange); }
+
 @media (max-width: 900px) {
   .main-nav { position: absolute; top: 76px; left: 0; right: 0; background: var(--ink-soft); flex-direction: column; padding: 20px 32px; gap: 16px; border-bottom: 1px solid var(--line); display: none; }
   .main-nav.open { display: flex; }
