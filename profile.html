@@ -41,11 +41,20 @@
   <div class="container" style="max-width:900px;">
 
     <div class="form-card" style="padding:0; overflow:hidden; max-width:none;">
-      <div style="height:120px; background:linear-gradient(120deg, var(--orange), var(--gold), var(--olive));"></div>
+      <div id="profile-banner" style="height:120px; background:linear-gradient(120deg, var(--orange), var(--gold), var(--olive)); background-size:cover; background-position:center; position:relative;">
+        <button type="button" id="edit-banner-btn" class="btn btn-outline" style="display:none; position:absolute; right:12px; bottom:12px; padding:6px 14px; font-size:0.78rem; background:rgba(20,21,15,0.55); border-color:rgba(243,234,216,0.4);">Change Banner</button>
+        <input type="file" id="banner-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+      </div>
       <div style="padding:0 32px 32px;">
         <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:-48px;">
           <div style="display:flex; align-items:flex-end; gap:16px;">
-            <span class="avatar" id="profile-avatar" style="width:96px; height:96px; font-size:2rem; border:4px solid var(--panel); border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;"></span>
+            <div style="position:relative;">
+              <span class="avatar" id="profile-avatar" style="width:96px; height:96px; font-size:2rem; border:4px solid var(--panel); border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; background-size:cover; background-position:center;"></span>
+              <button type="button" id="edit-avatar-btn" aria-label="Change profile photo" style="display:none; position:absolute; right:-4px; bottom:-4px; width:30px; height:30px; border-radius:50%; background:var(--orange); border:2px solid var(--panel); color:var(--ink); align-items:center; justify-content:center; cursor:pointer; padding:0;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+              <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+            </div>
             <div style="padding-bottom:6px;">
               <h1 id="profile-name" style="margin:0; font-size:1.6rem;">—</h1>
               <p id="profile-joined" style="color:var(--cream-dim); margin:4px 0 0;"></p>
@@ -152,7 +161,69 @@
       document.title = (data.profile.name || "Profile") + " — Every Block Has a Story";
       document.getElementById("profile-name").textContent = data.profile.name || "Anonymous";
       const initials = (data.profile.name || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
-      document.getElementById("profile-avatar").textContent = initials;
+      const avatarEl = document.getElementById("profile-avatar");
+      if (data.profile.avatarUrl) {
+        avatarEl.style.backgroundImage = `url('${data.profile.avatarUrl}')`;
+        avatarEl.textContent = "";
+      } else {
+        avatarEl.textContent = initials;
+      }
+      const bannerEl = document.getElementById("profile-banner");
+      if (data.profile.bannerUrl) {
+        bannerEl.style.backgroundImage = `url('${data.profile.bannerUrl}')`;
+      }
+
+      // ---- Avatar / banner upload (owner only) ----
+      async function uploadPhoto(type, file) {
+        const formData = new FormData();
+        formData.append("type", type);
+        formData.append("photo", file);
+        const res2 = await apiFetch("/api/users/me/photo", { method: "POST", body: formData });
+        const data2 = await res2.json();
+        if (!res2.ok) throw new Error(data2.error || "Couldn't upload photo.");
+        return data2.url;
+      }
+      const editAvatarBtn = document.getElementById("edit-avatar-btn");
+      const avatarFileInput = document.getElementById("avatar-file-input");
+      const editBannerBtn = document.getElementById("edit-banner-btn");
+      const bannerFileInput = document.getElementById("banner-file-input");
+      if (data.isSelf) {
+        editAvatarBtn.style.display = "flex";
+        editBannerBtn.style.display = "inline-flex";
+
+        editAvatarBtn.addEventListener("click", () => avatarFileInput.click());
+        avatarFileInput.addEventListener("change", async () => {
+          const file = avatarFileInput.files[0];
+          if (!file) return;
+          try {
+            showToast("Uploading photo…");
+            const url = await uploadPhoto("avatar", file);
+            avatarEl.style.backgroundImage = `url('${url}')`;
+            avatarEl.textContent = "";
+            showToast("Profile photo updated.");
+          } catch (err) {
+            showToast(err.message || "Couldn't upload photo.");
+          } finally {
+            avatarFileInput.value = "";
+          }
+        });
+
+        editBannerBtn.addEventListener("click", () => bannerFileInput.click());
+        bannerFileInput.addEventListener("change", async () => {
+          const file = bannerFileInput.files[0];
+          if (!file) return;
+          try {
+            showToast("Uploading banner…");
+            const url = await uploadPhoto("banner", file);
+            bannerEl.style.backgroundImage = `url('${url}')`;
+            showToast("Banner updated.");
+          } catch (err) {
+            showToast(err.message || "Couldn't upload banner.");
+          } finally {
+            bannerFileInput.value = "";
+          }
+        });
+      }
 
       let joined = "";
       try { joined = new Date(data.profile.created_at).toLocaleDateString(); } catch (e) { joined = ""; }
