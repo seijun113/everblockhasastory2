@@ -2700,7 +2700,7 @@ function commentHTML(c, currentUserId) {
   return `
   <div style="border-bottom:1px solid var(--line); padding-bottom:14px;">
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-      <span class="avatar" style="width:30px; height:30px; font-size:0.75rem;">${escapeHtml(initials)}</span>
+      <span class="avatar" style="width:30px; height:30px; font-size:0.75rem; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">${escapeHtml(initials)}</span>
       <strong style="font-size:0.9rem;">${escapeHtml(c.author || "Anonymous")}</strong>
       <span style="color:var(--cream-dim); font-size:0.8rem;">${escapeHtml(when)}</span>
       ${deleteLink ? `<span style="margin-left:auto;">${deleteLink}</span>` : ""}
