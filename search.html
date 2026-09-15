@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Profiles — Every Block Has a Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .search-box-wrap {
+    position: relative; max-width: 560px; margin: 0 auto 40px;
+  }
+  .search-box-wrap svg {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    color: var(--cream-dim); pointer-events: none;
+  }
+  #profile-search-input {
+    width: 100%; box-sizing: border-box;
+    padding: 14px 18px 14px 48px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 30px; color: var(--cream); font-size: 1rem; font-family: var(--sans);
+  }
+  #profile-search-input:focus { outline: none; border-color: var(--orange); }
+  .profile-result-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px; max-width: 900px; margin: 0 auto;
+  }
+  .profile-result-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; text-decoration: none; transition: border-color 0.15s;
+  }
+  .profile-result-card:hover { border-color: var(--orange); }
+  .profile-result-name { color: var(--cream); font-weight: 700; font-size: 1rem; margin: 0 0 2px; }
+  .profile-result-bio {
+    color: var(--cream-dim); font-size: 0.85rem; margin: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .profile-result-count { color: var(--cream-dim); font-size: 0.78rem; margin-top: 4px; }
+  #search-status { text-align: center; color: var(--cream-dim); margin: 30px 0; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo">
+      <span class="logo-main"><span>EVERY</span> <span>BLOCK</span></span>
+      <span class="logo-tag">HAS A STORY</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html">Home</a>
+      <a href="stories.html">Stories</a>
+      <a href="feed.html">Watch</a>
+      <a href="map.html">Map</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <a href="search.html" class="nav-search-link active" aria-label="Search profiles" title="Search profiles">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      </a>
+      <a href="account.html" class="nav-account-link" id="nav-account-link">Log In</a>
+      <a href="share.html" class="btn btn-primary"><span class="long">Share Your Story</span><span class="short">Share</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="section section-dark" style="padding-top:50px;">
+  <div class="container">
+    <h1 style="text-align:center; margin-bottom:8px;">Search Profiles</h1>
+    <p style="text-align:center; color:var(--cream-dim); margin-bottom:34px;">Find the people behind the stories.</p>
+
+    <div class="search-box-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="profile-search-input" placeholder="Search by name…" autocomplete="off">
+    </div>
+
+    <p id="search-status">Start typing to find a profile.</p>
+    <div id="profile-search-results" class="profile-result-grid"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 EveryBlockHasAStory.com. All stories welcome.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+<script>
+  (function () {
+    const input = document.getElementById("profile-search-input");
+    const statusEl = document.getElementById("search-status");
+    const resultsEl = document.getElementById("profile-search-results");
+
+    function avatarHTML(name) {
+      const initials = (name || "?").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+      return `<span style="flex-shrink:0; width:56px; height:56px; font-size:1.2rem; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;">${escapeHtml(initials)}</span>`;
+    }
+
+    function cardHTML(p) {
+      return `
+      <a class="profile-result-card" href="profile.html?id=${encodeURIComponent(p.id)}">
+        ${avatarHTML(p.name)}
+        <div style="min-width:0;">
+          <p class="profile-result-name">${escapeHtml(p.name || "Anonymous")}</p>
+          ${p.bio ? `<p class="profile-result-bio">${escapeHtml(p.bio)}</p>` : ""}
+          <p class="profile-result-count">${p.storyCount || 0} ${p.storyCount === 1 ? "story" : "stories"}</p>
+        </div>
+      </a>`;
+    }
+
+    let debounceTimer = null;
+    let requestId = 0;
+
+    async function runSearch(q) {
+      const myRequestId = ++requestId;
+      if (!q) {
+        resultsEl.innerHTML = "";
+        statusEl.style.display = "block";
+        statusEl.textContent = "Start typing to find a profile.";
+        return;
+      }
+      statusEl.style.display = "block";
+      statusEl.textContent = "Searching…";
+      resultsEl.innerHTML = "";
+      try {
+        const res = await fetch(API_BASE + "/api/users/search?q=" + encodeURIComponent(q));
+        const data = await res.json();
+        if (myRequestId !== requestId) return; // a newer keystroke already started a fresher search
+        if (!res.ok) throw new Error(data.error || "Search failed.");
+        const profiles = data.profiles || [];
+        if (!profiles.length) {
+          statusEl.style.display = "block";
+          statusEl.textContent = "No profiles found for \"" + q + "\".";
+          return;
+        }
+        statusEl.style.display = "none";
+        resultsEl.innerHTML = profiles.map(cardHTML).join("");
+      } catch (err) {
+        if (myRequestId !== requestId) return;
+        statusEl.style.display = "block";
+        statusEl.textContent = "Couldn't search right now — check your connection and try again.";
+      }
+    }
+
+    input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      const q = input.value.trim();
+      debounceTimer = setTimeout(() => runSearch(q), 300);
+    });
+
+    // If someone lands here with ?q=..., run that search right away.
+    const params = new URLSearchParams(window.location.search);
+    const initialQ = params.get("q");
+    if (initialQ) {
+      input.value = initialQ;
+      runSearch(initialQ.trim());
+    }
+  })();
+</script>
+</body>
+</html>
