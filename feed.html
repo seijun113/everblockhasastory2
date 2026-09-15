@@ -94,6 +94,38 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--cream-dim); background: #000; z-index: 10; text-align: center; padding: 20px;
   }
+  .feed-comments-overlay {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0,0,0,0.6);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .feed-comments-sheet {
+    background: var(--panel); width: 100%; max-width: 480px;
+    max-height: 72vh; border-radius: 18px 18px 0 0;
+    padding: 18px 20px 20px; box-sizing: border-box;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .feed-comments-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-shrink: 0;
+  }
+  .feed-comments-header h3 { margin: 0; font-size: 1.1rem; color: var(--cream); }
+  .feed-comments-header button {
+    background: none; border: none; color: var(--cream-dim); font-size: 1.3rem;
+    cursor: pointer; line-height: 1; padding: 4px;
+  }
+  .feed-comments-list {
+    overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;
+    margin-bottom: 14px;
+  }
+  .feed-comment-form {
+    display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+  }
+  .feed-comment-form input {
+    flex: 1; background: var(--ink-soft); border: 1px solid var(--line);
+    border-radius: 20px; padding: 10px 16px; color: var(--cream); font-size: 0.9rem;
+  }
+  .feed-comment-form input:focus { outline: none; border-color: var(--orange); }
 </style>
 </head>
 <body class="feed-body">
@@ -111,6 +143,24 @@
 <div id="feed-loading" class="feed-loading">Loading stories…</div>
 <div id="feed-empty" class="feed-empty" style="display:none;">No stories to watch yet — be the first to share one.</div>
 <div id="feed-scroll" class="feed-scroll" style="display:none;"></div>
+
+<div id="feed-comments-overlay" class="feed-comments-overlay">
+  <div class="feed-comments-sheet">
+    <div class="feed-comments-header">
+      <h3>Comments</h3>
+      <button type="button" id="feed-comments-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="feed-comments-list" class="feed-comments-list"></div>
+    <p id="feed-comments-empty" style="display:none; color:var(--cream-dim); text-align:center; padding:10px 0;">No comments yet — be the first to say something.</p>
+    <div id="feed-comment-form-logged-in" class="feed-comment-form" style="display:none;">
+      <input type="text" id="feed-comment-input" placeholder="Add a comment…" maxlength="500">
+      <button type="button" id="feed-comment-submit-btn" class="btn btn-primary" style="padding:8px 18px; font-size:0.85rem;">Post</button>
+    </div>
+    <p id="feed-comment-form-logged-out" style="display:none; color:var(--cream-dim); font-size:0.85rem; text-align:center;">
+      <a href="account.html" style="color:var(--orange);">Log in</a> to leave a comment.
+    </p>
+  </div>
+</div>
 
 <script src="script.js"></script>
 <script>
@@ -152,6 +202,7 @@
 
     initFeedPlayback(scrollEl);
     initFeedActions(scrollEl, videos);
+    initFeedComments(scrollEl);
 
     // Up/down arrow keys move one slide at a time — handy on desktop where
     // there's no swipe gesture.
