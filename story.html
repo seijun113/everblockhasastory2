@@ -72,6 +72,7 @@
         </span>
         <iframe id="story-video" style="display:none; width:100%; height:100%; border:none;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen></iframe>
       </div>
+      <div id="story-photo-gallery" style="display:none; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-top:12px;"></div>
     </div>
     <div>
       <span class="story-loc" id="story-loc" style="position:static; display:inline-flex;"></span>
@@ -190,6 +191,7 @@
     const iconEl = document.getElementById("story-media-icon");
     const videoEl = document.getElementById("story-video");
 
+    const photoUrls = Array.isArray(story.photoUrls) ? story.photoUrls : [];
     if (story.videoUrl) {
       mediaEl.style.background = story.thumbnailUrl
         ? `#000 url('${story.thumbnailUrl}') center / cover no-repeat`
@@ -197,6 +199,16 @@
       iconEl.style.display = "none";
       videoEl.src = story.videoUrl;
       videoEl.style.display = "block";
+    } else if (photoUrls.length) {
+      iconEl.style.display = "none";
+      mediaEl.style.background = `#000 url('${photoUrls[0]}') center / cover no-repeat`;
+      const galleryEl = document.getElementById("story-photo-gallery");
+      if (galleryEl && photoUrls.length > 1) {
+        galleryEl.style.display = "grid";
+        galleryEl.innerHTML = photoUrls.slice(1).map((url) =>
+          `<div style="aspect-ratio:1; border-radius:8px; overflow:hidden; background:#000 url('${url}') center / cover no-repeat;"></div>`
+        ).join("");
+      }
     } else {
       mediaEl.style.background =
         "linear-gradient(135deg, hsl(" + (story.hue || 30) + " 45% 22%), var(--ink-soft))";
@@ -211,7 +223,9 @@
     }
     const initials = (story.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
     document.getElementById("story-avatar").textContent = initials;
-    document.getElementById("story-body").textContent = story.body || story.caption || "";
+    const storyBodyEl = document.getElementById("story-body");
+    storyBodyEl.textContent = story.body || story.caption || "";
+    storyBodyEl.style.whiteSpace = "pre-wrap";
     const storyViewsEl = document.getElementById("story-views");
     if (storyViewsEl) {
       const viewCount = story.viewCount || 0;
