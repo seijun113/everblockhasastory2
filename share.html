@@ -112,35 +112,61 @@
       <span class="eyebrow">Step 3 of 3</span>
       <h2 style="margin-top:8px; font-size:1.4rem;">Tell Your Story</h2>
       <div class="field">
+        <label>Story type</label>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-outline post-type-btn active" data-type="video" style="flex:1;">Video Story</button>
+          <button type="button" class="btn btn-outline post-type-btn" data-type="blog" style="flex:1;">Written Story</button>
+        </div>
+        <div class="field-hint">Post a short video, or write about your block instead — no video required for a written story.</div>
+      </div>
+      <div class="field">
         <label for="story-title">Story title</label>
         <input type="text" id="story-title" placeholder="e.g. The Corner That Raised Me" required>
       </div>
 
-      <div class="field">
-        <label for="video-file">Video (required)</label>
-        <div class="dropzone" id="dropzone">
-          <input type="file" id="video-file" accept="video/*" style="display:none;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          <div class="dz-text">Drag & drop a video, or click to browse</div>
+      <div id="video-fields">
+        <div class="field">
+          <label for="video-file">Video</label>
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="video-file" accept="video/*" style="display:none;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            <div class="dz-text">Drag & drop a video, or click to browse</div>
+          </div>
+          <video id="video-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" controls></video>
+          <div class="field-hint">MP4 or MOV, up to 2 minutes. Uploaded directly to our video host and reviewed before it appears publicly.</div>
         </div>
-        <video id="video-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" controls></video>
-        <div class="field-hint">MP4 or MOV, up to 2 minutes. Uploaded directly to our video host and reviewed before it appears publicly.</div>
+
+        <div class="field">
+          <label for="thumbnail-file">Custom thumbnail (optional)</label>
+          <div class="dropzone" id="thumb-dropzone">
+            <input type="file" id="thumbnail-file" accept="image/*" style="display:none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <div class="dz-text">Drag & drop an image, or click to browse</div>
+          </div>
+          <img id="thumbnail-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" alt="Thumbnail preview">
+          <div class="field-hint">Leave this blank and we'll automatically use a frame from 2 seconds into your video instead.</div>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="thumbnail-file">Custom thumbnail (optional)</label>
-        <div class="dropzone" id="thumb-dropzone">
-          <input type="file" id="thumbnail-file" accept="image/*" style="display:none;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          <div class="dz-text">Drag & drop an image, or click to browse</div>
+      <div id="blog-fields" style="display:none;">
+        <div class="field">
+          <label for="story-body">Your story</label>
+          <textarea id="story-body" placeholder="Tell us about your block, your neighbors, what makes it home..." style="min-height:180px;"></textarea>
         </div>
-        <img id="thumbnail-preview" style="display:none; width:100%; margin-top:12px; border-radius:8px;" alt="Thumbnail preview">
-        <div class="field-hint">Leave this blank and we'll automatically use a frame from 2 seconds into your video instead.</div>
+        <div class="field">
+          <label for="photo-files">Photos (optional)</label>
+          <div class="dropzone" id="photo-dropzone">
+            <input type="file" id="photo-files" accept="image/*" multiple style="display:none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin:0 auto 8px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <div class="dz-text">Drag & drop photos, or click to browse (up to 8)</div>
+          </div>
+          <div id="photo-preview-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px;"></div>
+        </div>
       </div>
 
       <div class="field">
         <label for="story-caption">Caption</label>
-        <textarea id="story-caption" placeholder="What makes your block special?" required></textarea>
+        <textarea id="story-caption" placeholder="What makes your block special?"></textarea>
       </div>
 
       <div class="field">
