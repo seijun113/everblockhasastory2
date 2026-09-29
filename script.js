@@ -191,9 +191,11 @@ function videoToStoryShape(v) {
   return {
     id: "v_" + v.id,
     profileId: v.profile_id || null,
+    postType: v.postType || "video",
     title: v.title,
     caption: v.caption,
-    body: v.caption,
+    body: v.body || v.caption,
+    photoUrls: v.photoUrls || [],
     location: v.location,
     country: v.country,
     author: v.author,
@@ -988,14 +990,18 @@ const API = {
 // ---------- Story card rendering ----------
 function storyCardHTML(s) {
   const initials = (s.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
+  const isBlog = s.postType === "blog";
   const media = s.thumbnailUrl
     ? `<div class="story-media-fallback" style="background-image:url('${escapeAttr(s.thumbnailUrl)}'); background-size:cover; background-position:center;"></div>`
     : `<div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
+  const badge = isBlog
+    ? `<span class="play-badge" title="Written story">${docIcon()}</span>`
+    : `<span class="play-badge">${playIcon()}</span>`;
   return `
   <a class="story-card" href="story.html?id=${encodeURIComponent(s.id)}" data-country="${escapeAttr(s.country || "")}">
     ${media}
     <span class="story-loc">${pinIcon()} ${escapeHtml(s.location || "")}</span>
-    <span class="play-badge">${playIcon()}</span>
+    ${badge}
     <div class="story-body">
       <h3>${escapeHtml(s.title || "Untitled Story")}</h3>
       <div class="story-user">
@@ -1067,6 +1073,10 @@ function commentIcon() {
 
 function eyeIcon() {
   return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+}
+
+function docIcon() {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>`;
 }
 
 // Compact display for a count, e.g. 950 -> "950", 1200 -> "1.2k", 2500000 -> "2.5M".
@@ -1788,6 +1798,63 @@ function initShareForm() {
   const postCountLine = document.getElementById("post-count-line");
   const postAnotherBtn = document.getElementById("post-another-btn");
   const submitBtn = form.querySelector('button[type="submit"]');
+  const videoFields = document.getElementById("video-fields");
+  const blogFields = document.getElementById("blog-fields");
+  const bodyInput = document.getElementById("story-body");
+  const photoInput = document.getElementById("photo-files");
+  const photoDropzone = document.getElementById("photo-dropzone");
+  const photoPreviewGrid = document.getElementById("photo-preview-grid");
+  const typeBtns = Array.from(document.querySelectorAll(".post-type-btn"));
+  let postType = "video";
+  let selectedPhotos = [];
+
+  function setPostType(type) {
+    postType = type === "blog" ? "blog" : "video";
+    typeBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.type === postType));
+    if (videoFields) videoFields.style.display = postType === "video" ? "" : "none";
+    if (blogFields) blogFields.style.display = postType === "blog" ? "" : "none";
+  }
+
+  typeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => setPostType(btn.dataset.type));
+  });
+
+  function renderPhotoPreviews() {
+    if (!photoPreviewGrid) return;
+    photoPreviewGrid.innerHTML = "";
+    selectedPhotos.forEach((file, idx) => {
+      const url = URL.createObjectURL(file);
+      const wrap = document.createElement("div");
+      wrap.className = "photo-preview-item";
+      wrap.innerHTML = `<img src="${url}" alt=""><button type="button" class="photo-remove-btn" data-idx="${idx}">&times;</button>`;
+      photoPreviewGrid.appendChild(wrap);
+    });
+    photoPreviewGrid.querySelectorAll(".photo-remove-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        selectedPhotos.splice(idx, 1);
+        renderPhotoPreviews();
+      });
+    });
+  }
+
+  function addPhotos(fileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    selectedPhotos = selectedPhotos.concat(files).slice(0, 12);
+    renderPhotoPreviews();
+  }
+
+  if (photoDropzone && photoInput) {
+    photoDropzone.addEventListener("click", () => photoInput.click());
+    photoDropzone.addEventListener("dragover", (e) => { e.preventDefault(); photoDropzone.classList.add("has-file"); });
+    photoDropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) addPhotos(e.dataTransfer.files);
+    });
+    photoInput.addEventListener("change", () => {
+      if (photoInput.files.length) addPhotos(photoInput.files);
+    });
+  }
 
   function resetForm() {
     form.reset();
@@ -1803,6 +1870,9 @@ function initShareForm() {
       thumbPreview.style.display = "none";
       thumbPreview.removeAttribute("src");
     }
+    selectedPhotos = [];
+    if (photoPreviewGrid) photoPreviewGrid.innerHTML = "";
+    setPostType("video");
   }
 
   if (postAnotherBtn) {
@@ -1867,6 +1937,19 @@ function initShareForm() {
     }
   }
 
+  async function uploadPhotos() {
+    const urls = [];
+    for (const file of selectedPhotos) {
+      const photoForm = new FormData();
+      photoForm.append("thumbnail", file);
+      const res = await apiFetch("/api/videos/thumbnail-upload", { method: "POST", body: photoForm });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't upload a photo.");
+      urls.push(data.thumbnailUrl);
+    }
+    return urls;
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -1880,14 +1963,66 @@ function initShareForm() {
     const location = document.getElementById("story-location").value.trim();
     const country = document.getElementById("story-country").value.trim();
     const author = document.getElementById("story-author").value.trim() || "Anonymous";
-    const file = fileInput.files[0];
 
-    if (!title || !caption || !location) {
-      showToast("Please fill in a title, location, and caption.");
+    if (!title || !location) {
+      showToast("Please fill in a title and location.");
       return;
     }
+
+    if (postType === "blog") {
+      const body = bodyInput ? bodyInput.value.trim() : "";
+      if (!body) {
+        showToast("Please write something about your neighborhood.");
+        return;
+      }
+
+      const originalLabel = submitBtn ? submitBtn.textContent : "";
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Uploading photos…"; }
+
+      try {
+        const photoUrls = await uploadPhotos();
+
+        if (submitBtn) submitBtn.textContent = "Posting…";
+        const saveRes = await apiFetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postType: "blog", title, caption, body, location, country, author, photoUrls }),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) throw new Error(saveData.error || "Couldn't save your story.");
+
+        const finalStatus = saveData.video && saveData.video.status;
+        showToast(saveData.message || "Your story is submitted!");
+
+        resetForm();
+        form.style.display = "none";
+        if (successPanel) {
+          const titleEl = successPanel.querySelector("h2");
+          if (finalStatus === "approved") {
+            if (titleEl) titleEl.textContent = "Your Story Is Live!";
+            if (postCountLine) postCountLine.textContent = "It passed review and is already visible on the site.";
+          } else if (finalStatus === "rejected") {
+            if (titleEl) titleEl.textContent = "Story Not Approved";
+            if (postCountLine) postCountLine.textContent = saveData.message || "This story didn't pass review.";
+          } else {
+            if (titleEl) titleEl.textContent = "Your Story Is Submitted!";
+            if (postCountLine) postCountLine.textContent = "Thanks for sharing — new posts are reviewed before they appear publicly, so it may take a little while to show up.";
+          }
+          successPanel.style.display = "block";
+          successPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        renderAllStoryGrids();
+      } catch (err) {
+        showToast(err.message || "Couldn't post your story.");
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
+      }
+      return;
+    }
+
+    const file = fileInput.files[0];
     if (!file) {
-      showToast("A video is required to post — attach one above.");
+      showToast("A video is required to post — attach one above, or switch to writing a blog post.");
       return;
     }
 
@@ -1934,7 +2069,7 @@ function initShareForm() {
       const saveRes = await apiFetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cloudflareUid: urlData.uid, title, caption, location, country, author, thumbnailUrl }),
+        body: JSON.stringify({ postType: "video", cloudflareUid: urlData.uid, title, caption, location, country, author, thumbnailUrl }),
       });
       const saveData = await saveRes.json();
       if (!saveRes.ok) throw new Error(saveData.error || "Couldn't save your story.");
