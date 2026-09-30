@@ -192,6 +192,7 @@
     const videoEl = document.getElementById("story-video");
 
     const photoUrls = Array.isArray(story.photoUrls) ? story.photoUrls : [];
+    const isBlog = story.postType === "blog";
     if (story.videoUrl) {
       mediaEl.style.background = story.thumbnailUrl
         ? `#000 url('${story.thumbnailUrl}') center / cover no-repeat`
@@ -201,14 +202,21 @@
       videoEl.style.display = "block";
     } else if (photoUrls.length) {
       iconEl.style.display = "none";
-      mediaEl.style.background = `#000 url('${photoUrls[0]}') center / cover no-repeat`;
+      mediaEl.style.aspectRatio = isBlog ? "16/10" : "4/5";
+      mediaEl.style.background = `#f3ead8 url('${photoUrls[0]}') center / cover no-repeat`;
       const galleryEl = document.getElementById("story-photo-gallery");
       if (galleryEl && photoUrls.length > 1) {
         galleryEl.style.display = "grid";
         galleryEl.innerHTML = photoUrls.slice(1).map((url) =>
-          `<div style="aspect-ratio:1; border-radius:8px; overflow:hidden; background:#000 url('${url}') center / cover no-repeat;"></div>`
+          `<div style="aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f3ead8 url('${url}') center / cover no-repeat;"></div>`
         ).join("");
       }
+    } else if (isBlog) {
+      mediaEl.style.aspectRatio = "16/10";
+      mediaEl.style.background =
+        "linear-gradient(135deg, hsl(" + (story.hue || 30) + " 45% 22%), var(--ink-soft))";
+      iconEl.innerHTML = docIcon();
+      iconEl.style.display = "flex";
     } else {
       mediaEl.style.background =
         "linear-gradient(135deg, hsl(" + (story.hue || 30) + " 45% 22%), var(--ink-soft))";
