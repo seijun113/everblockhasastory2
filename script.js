@@ -2278,6 +2278,41 @@ function initAccountPage() {
         viewProfileLink.href = "profile.html?id=" + encodeURIComponent(data.user.id);
       }
 
+      // Profile photo: load current avatar + wire the camera button.
+      try {
+        const pRes = await apiFetch("/api/users/" + encodeURIComponent(data.user.id));
+        const pData = await pRes.json();
+        if (pRes.ok && pData.profile && pData.profile.avatarUrl && avatarEl) {
+          avatarEl.style.backgroundImage = `url('${pData.profile.avatarUrl}')`;
+          avatarEl.textContent = "";
+        }
+      } catch (e) { /* avatar is optional — keep initials */ }
+      const avatarEditBtn = document.getElementById("acct-avatar-edit");
+      const avatarInput = document.getElementById("acct-avatar-input");
+      if (avatarEditBtn && avatarInput && !avatarEditBtn.dataset.wired) {
+        avatarEditBtn.dataset.wired = "1";
+        avatarEditBtn.addEventListener("click", () => avatarInput.click());
+        avatarInput.addEventListener("change", async () => {
+          const file = avatarInput.files[0];
+          if (!file) return;
+          try {
+            showToast("Uploading photo…");
+            const fd = new FormData();
+            fd.append("type", "avatar");
+            fd.append("photo", file);
+            const upRes = await apiFetch("/api/users/me/photo", { method: "POST", body: fd });
+            const upData = await upRes.json();
+            if (!upRes.ok) throw new Error(upData.error || "Couldn't upload photo.");
+            avatarEl.style.backgroundImage = `url('${upData.url}')`;
+            avatarEl.textContent = "";
+            showToast("Profile photo updated.");
+          } catch (err) {
+            showToast(err.message || "Couldn't upload photo.");
+          } finally {
+            avatarInput.value = "";
+          }
+        });
+      }
       await renderMyStories();
       await renderSavedStories();
     } catch (err) {
