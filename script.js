@@ -995,7 +995,7 @@ function storyCardHTML(s) {
     ? `<div class="story-media-fallback" style="background-image:url('${escapeAttr(s.thumbnailUrl)}'); background-size:cover; background-position:center;"></div>`
     : `<div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
   const badge = isBlog
-    ? `<span class="play-badge" title="Written story">${docIcon()}</span>`
+    ? `<span title="Written story" style="position:absolute; top:12px; right:12px; z-index:2; padding:5px 10px; border-radius:999px; background:rgba(243,234,216,0.92); color:var(--ink); font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; display:flex; align-items:center; gap:5px;">${docIcon()} Blog</span>`
     : `<span class="play-badge">${playIcon()}</span>`;
   return `
   <a class="story-card" href="story.html?id=${encodeURIComponent(s.id)}" data-country="${escapeAttr(s.country || "")}">
