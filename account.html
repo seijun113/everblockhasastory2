@@ -125,8 +125,9 @@
     <!-- Logged in: Instagram-style profile -->
     <style>
       .ig-head { display:flex; gap:clamp(20px,5vw,64px); align-items:center; padding:8px 0 28px; flex-wrap:wrap; }
-      .ig-avatar-ring { padding:4px; border-radius:50%; background:linear-gradient(45deg,var(--gold),var(--orange),#c13584); flex-shrink:0; }
-      .ig-avatar-ring .avatar { border:4px solid var(--ink); }
+      .ig-avatar-ring { position:relative; padding:4px; border-radius:50%; background:linear-gradient(45deg,var(--gold),var(--orange),#c13584); flex-shrink:0; }
+      .ig-avatar-ring .avatar { border:4px solid var(--ink); background-size:cover; background-position:center; }
+      #acct-avatar-edit { position:absolute; right:2px; bottom:6px; width:34px; height:34px; border-radius:50%; border:3px solid var(--ink); background:var(--orange); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
       .ig-main { flex:1; min-width:260px; }
       .ig-top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
       .ig-top h2 { margin:0; font-size:1.35rem; font-weight:600; font-family:Inter,sans-serif; }
@@ -144,6 +145,10 @@
       <div class="ig-head">
         <div class="ig-avatar-ring">
           <span class="avatar" id="account-avatar" style="width:116px; height:116px; font-size:2.6rem; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;"></span>
+          <button type="button" id="acct-avatar-edit" aria-label="Change profile photo" title="Change profile photo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+          <input type="file" id="acct-avatar-input" accept="image/*" style="display:none;">
         </div>
         <div class="ig-main">
           <div class="ig-top">
