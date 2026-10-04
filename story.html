@@ -193,6 +193,17 @@
 
     const photoUrls = Array.isArray(story.photoUrls) ? story.photoUrls : [];
     const isBlog = story.postType === "blog";
+    if (isBlog) {
+      const twoCol = foundEl.querySelector(".two-col");
+      if (twoCol) {
+        twoCol.style.display = "block";
+        twoCol.style.maxWidth = "760px";
+      }
+      const mediaCol = mediaEl.parentElement;
+      if (mediaCol) mediaCol.style.marginBottom = "28px";
+      const og = document.querySelector('meta[property="og:type"]');
+      if (og) og.setAttribute("content", "article");
+    }
     if (story.videoUrl) {
       mediaEl.style.background = story.thumbnailUrl
         ? `#000 url('${story.thumbnailUrl}') center / cover no-repeat`
@@ -202,7 +213,7 @@
       videoEl.style.display = "block";
     } else if (photoUrls.length) {
       iconEl.style.display = "none";
-      mediaEl.style.aspectRatio = isBlog ? "16/10" : "4/5";
+      mediaEl.style.aspectRatio = isBlog ? "16/9" : "4/5";
       mediaEl.style.background = `#f3ead8 url('${photoUrls[0]}') center / cover no-repeat`;
       const galleryEl = document.getElementById("story-photo-gallery");
       if (galleryEl && photoUrls.length > 1) {
@@ -212,11 +223,7 @@
         ).join("");
       }
     } else if (isBlog) {
-      mediaEl.style.aspectRatio = "16/10";
-      mediaEl.style.background =
-        "linear-gradient(135deg, hsl(" + (story.hue || 30) + " 45% 22%), var(--ink-soft))";
-      iconEl.innerHTML = docIcon();
-      iconEl.style.display = "flex";
+      mediaEl.style.display = "none";
     } else {
       mediaEl.style.background =
         "linear-gradient(135deg, hsl(" + (story.hue || 30) + " 45% 22%), var(--ink-soft))";
@@ -234,6 +241,7 @@
     const storyBodyEl = document.getElementById("story-body");
     storyBodyEl.textContent = story.body || story.caption || "";
     storyBodyEl.style.whiteSpace = "pre-wrap";
+    if (isBlog) { storyBodyEl.style.color = "var(--cream)"; storyBodyEl.style.fontSize = "1.15rem"; storyBodyEl.style.lineHeight = "1.85"; }
     const storyViewsEl = document.getElementById("story-views");
     if (storyViewsEl) {
       const viewCount = story.viewCount || 0;
