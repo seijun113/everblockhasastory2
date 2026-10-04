@@ -2206,13 +2206,19 @@ function initAccountPage() {
   const cancelPasswordBtn = document.getElementById("cancel-password-btn");
   const passwordEditHint = document.getElementById("password-edit-hint");
 
+  const heroSection = document.querySelector(".page-hero");
+  function setHero(show) { if (heroSection) heroSection.style.display = show ? "" : "none"; }
+  function setStat(id, n) { const el = document.getElementById(id); if (el) el.textContent = formatCount(n); }
+
   function showLoggedOut() {
+    setHero(true);
     loggedOutView.style.display = "block";
     loggedInView.style.display = "none";
     if (heroTitle) heroTitle.textContent = "Log In or Create an Account";
     if (heroSub) heroSub.textContent = "Sign in to check your verification status and see the stories you've posted.";
   }
   function showChooseUsername() {
+    setHero(true);
     loggedOutView.style.display = "none";
     loggedInView.style.display = "none";
     if (forgotPasswordPanel) forgotPasswordPanel.style.display = "none";
@@ -2225,6 +2231,7 @@ function initAccountPage() {
     if (heroSub) heroSub.textContent = "Pick a username to finish setting up your account.";
   }
   function showLoggedIn(name) {
+    setHero(false);
     loggedOutView.style.display = "none";
     loggedInView.style.display = "block";
     if (heroTitle) heroTitle.textContent = "Welcome back" + (name ? ", " + name : "");
@@ -2288,6 +2295,8 @@ function initAccountPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't load your stories.");
       const videos = data.videos || [];
+      setStat("acct-stat-posts", videos.length);
+      setStat("acct-stat-views", videos.reduce((sum, v) => sum + (v.viewCount ?? v.view_count ?? 0), 0));
       if (!videos.length) {
         if (myStoriesEmpty) {
           myStoriesEmpty.textContent = "You haven't posted any stories yet.";
@@ -2343,6 +2352,7 @@ function initAccountPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't load saved stories.");
       const videos = data.videos || [];
+      setStat("acct-stat-saved", videos.length);
       if (!videos.length) {
         if (savedStoriesEmpty) {
           savedStoriesEmpty.textContent = "You haven't saved any stories yet.";
