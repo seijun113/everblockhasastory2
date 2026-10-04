@@ -57,10 +57,10 @@
 </section>
 
 <section class="section section-dark" style="padding-top:20px;">
-  <div class="container" style="max-width:620px;">
+  <div class="container" style="max-width:935px;">
 
     <!-- Logged out: login/signup form -->
-    <div id="account-logged-out" class="form-card">
+    <div id="account-logged-out" class="form-card" style="max-width:620px; margin-left:auto; margin-right:auto;">
       <h2 style="margin-top:0; font-size:1.4rem;">Log In / Sign Up</h2>
       <p style="color:var(--cream-dim);">New here? Enter your email and a password to create an account — you'll pick a username next. Already have one? Just enter your email and password.</p>
       <div class="field">
@@ -87,7 +87,7 @@
     </div>
 
     <!-- Forgot password: request a reset email -->
-    <div id="forgot-password-panel" class="form-card" style="display:none;">
+    <div id="forgot-password-panel" class="form-card" style="max-width:620px; margin-left:auto; margin-right:auto; display:none;">
       <h2 style="margin-top:0; font-size:1.4rem;">Reset Your Password</h2>
       <p style="color:var(--cream-dim);">Enter your account email and we'll send you a link to set a new password.</p>
       <div class="field">
@@ -101,7 +101,7 @@
     </div>
 
     <!-- Password recovery: shown when arriving via the reset email link -->
-    <div id="new-password-panel" class="form-card" style="display:none;">
+    <div id="new-password-panel" class="form-card" style="max-width:620px; margin-left:auto; margin-right:auto; display:none;">
       <h2 style="margin-top:0; font-size:1.4rem;">Set A New Password</h2>
       <p style="color:var(--cream-dim);">Choose a new password for your account.</p>
       <div class="field">
@@ -112,7 +112,7 @@
     </div>
 
     <!-- Choose username: shown once, right after creating an account -->
-    <div id="choose-username-panel" class="form-card" style="display:none;">
+    <div id="choose-username-panel" class="form-card" style="max-width:620px; margin-left:auto; margin-right:auto; display:none;">
       <h2 style="margin-top:0; font-size:1.4rem;">Pick a Username</h2>
       <p style="color:var(--cream-dim);">One last step — choose a username so people can recognize your stories.</p>
       <div class="field">
@@ -122,17 +122,42 @@
       <button type="button" id="choose-username-submit" class="btn btn-primary btn-block">Continue</button>
     </div>
 
-    <!-- Logged in: profile + my stories -->
+    <!-- Logged in: Instagram-style profile -->
+    <style>
+      .ig-head { display:flex; gap:clamp(20px,5vw,64px); align-items:center; padding:8px 0 28px; flex-wrap:wrap; }
+      .ig-avatar-ring { padding:4px; border-radius:50%; background:linear-gradient(45deg,var(--gold),var(--orange),#c13584); flex-shrink:0; }
+      .ig-avatar-ring .avatar { border:4px solid var(--ink); }
+      .ig-main { flex:1; min-width:260px; }
+      .ig-top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+      .ig-top h2 { margin:0; font-size:1.35rem; font-weight:600; font-family:Inter,sans-serif; }
+      .ig-stats { display:flex; gap:clamp(18px,4vw,40px); margin-bottom:16px; }
+      .ig-stat { font-size:0.95rem; color:var(--cream-dim); }
+      .ig-stat b { color:var(--cream); font-weight:700; font-size:1.05rem; margin-right:4px; }
+      .ig-tabs { display:flex; justify-content:center; gap:clamp(30px,8vw,64px); border-top:1px solid var(--line); }
+      .ig-tab { background:none; border:none; border-top:2px solid transparent; margin-top:-1px; padding:14px 4px; color:var(--cream-dim); font:600 0.78rem Inter,sans-serif; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; display:flex; align-items:center; gap:7px; }
+      .ig-tab.active { color:var(--cream); border-top-color:var(--cream); }
+      .ig-settings { display:none; margin:0 0 24px; padding:18px; border:1px solid var(--line); border-radius:12px; }
+      .ig-settings.open { display:block; }
+      #account-logged-in .story-grid { margin-top:22px; }
+    </style>
     <div id="account-logged-in" style="display:none;">
-      <div class="form-card" style="display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
-        <span class="avatar" id="account-avatar" style="width:68px; height:68px; font-size:1.5rem; flex-shrink:0; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;"></span>
-        <div style="flex:1; min-width:200px;">
-          <span class="eyebrow">Profile</span>
-          <h2 style="margin:6px 0 2px; font-size:1.5rem; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span id="account-name">—</span>
-            <button type="button" id="edit-name-btn" class="btn btn-outline" style="padding:3px 12px; font-size:0.72rem; font-weight:600;">Edit</button>
-          </h2>
-          <div id="edit-name-form" style="display:none; margin:4px 0 10px;">
+      <div class="ig-head">
+        <div class="ig-avatar-ring">
+          <span class="avatar" id="account-avatar" style="width:116px; height:116px; font-size:2.6rem; border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700;"></span>
+        </div>
+        <div class="ig-main">
+          <div class="ig-top">
+            <h2 id="account-name">—</h2>
+            <span class="verified-pill" id="account-verified"></span>
+          </div>
+          <div class="ig-top" style="margin-bottom:18px;">
+            <button type="button" id="edit-name-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.82rem; font-weight:600;">Edit profile</button>
+            <a id="view-public-profile-link" href="#" class="btn btn-outline" style="padding:7px 16px; font-size:0.82rem; font-weight:600;">View public profile</a>
+            <button type="button" id="settings-toggle-btn" class="btn btn-outline" style="padding:7px 12px; font-size:0.82rem;" aria-label="Settings" title="Settings">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+          <div id="edit-name-form" style="display:none; margin:0 0 14px;">
             <input type="text" id="new-name-input" placeholder="New username" style="margin-bottom:8px; max-width:260px;">
             <div style="display:flex; gap:8px;">
               <button type="button" id="save-name-btn" class="btn btn-primary" style="padding:7px 16px; font-size:0.8rem;">Save</button>
@@ -140,41 +165,46 @@
             </div>
             <p id="name-edit-hint" style="color:var(--cream-dim); font-size:0.78rem; margin:6px 0 0;"></p>
           </div>
-          <p style="color:var(--cream-dim); margin:0 0 12px;" id="account-email"></p>
-          <span class="verified-pill" id="account-verified"></span>
-          <div style="margin-top:14px;">
-            <button type="button" id="change-password-btn" class="btn btn-outline" style="padding:3px 12px; font-size:0.72rem; font-weight:600;">Change Password</button>
+          <div class="ig-stats">
+            <div class="ig-stat"><b id="acct-stat-posts">0</b>posts</div>
+            <div class="ig-stat"><b id="acct-stat-views">0</b>views</div>
+            <div class="ig-stat"><b id="acct-stat-saved">0</b>saved</div>
           </div>
-          <div id="change-password-form" style="display:none; margin-top:10px;">
-            <input type="password" id="change-password-input" placeholder="New password (at least 8 characters)" style="margin-bottom:8px; max-width:260px;">
-            <div style="display:flex; gap:8px;">
-              <button type="button" id="save-password-btn" class="btn btn-primary" style="padding:7px 16px; font-size:0.8rem;">Save</button>
-              <button type="button" id="cancel-password-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.8rem;">Cancel</button>
-            </div>
-            <p id="password-edit-hint" style="color:var(--cream-dim); font-size:0.78rem; margin:6px 0 0;"></p>
-          </div>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <a id="view-public-profile-link" href="#" class="btn btn-outline">View Public Profile</a>
-          <button type="button" id="logout-btn" class="btn btn-outline">Log Out</button>
+          <p style="color:var(--cream-dim); margin:0; font-size:0.9rem;" id="account-email"></p>
         </div>
       </div>
 
-      <div style="margin-top:48px;">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-          <h2 style="font-size:1.5rem; margin:0;">Your Stories</h2>
-          <div style="flex:1; height:1px; background:var(--line);"></div>
+      <div class="ig-settings" id="account-settings-panel">
+        <h3 style="margin:0 0 12px; font-size:1rem;">Settings</h3>
+        <button type="button" id="change-password-btn" class="btn btn-outline" style="padding:6px 14px; font-size:0.78rem; font-weight:600;">Change password</button>
+        <div id="change-password-form" style="display:none; margin-top:10px;">
+          <input type="password" id="change-password-input" placeholder="New password (at least 8 characters)" style="margin-bottom:8px; max-width:260px;">
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="save-password-btn" class="btn btn-primary" style="padding:7px 16px; font-size:0.8rem;">Save</button>
+            <button type="button" id="cancel-password-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.8rem;">Cancel</button>
+          </div>
+          <p id="password-edit-hint" style="color:var(--cream-dim); font-size:0.78rem; margin:6px 0 0;"></p>
         </div>
-        <p id="my-stories-empty" style="color:var(--cream-dim); display:none;">You haven't posted any stories yet.</p>
+        <div style="margin-top:14px;">
+          <button type="button" id="logout-btn" class="btn btn-outline" style="padding:6px 14px; font-size:0.78rem; font-weight:600;">Log out</button>
+        </div>
+      </div>
+
+      <div class="ig-tabs">
+        <button type="button" class="ig-tab active" data-tab="posts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Posts
+        </button>
+        <button type="button" class="ig-tab" data-tab="saved">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Saved
+        </button>
+      </div>
+
+      <div id="tab-posts">
+        <p id="my-stories-empty" style="color:var(--cream-dim); display:none; text-align:center; padding:40px 0;">You haven't posted any stories yet.</p>
         <div id="my-stories-grid" class="story-grid"></div>
       </div>
-
-      <div style="margin-top:48px;">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-          <h2 style="font-size:1.5rem; margin:0;">Saved Stories</h2>
-          <div style="flex:1; height:1px; background:var(--line);"></div>
-        </div>
-        <p id="saved-stories-empty" style="color:var(--cream-dim); display:none;">You haven't saved any stories yet.</p>
+      <div id="tab-saved" style="display:none;">
+        <p id="saved-stories-empty" style="color:var(--cream-dim); display:none; text-align:center; padding:40px 0;">You haven't saved any stories yet.</p>
         <div id="saved-stories-grid" class="story-grid"></div>
       </div>
     </div>
@@ -237,5 +267,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="script.js"></script>
+<script>
+  (function () {
+    const tabs = document.querySelectorAll(".ig-tab");
+    tabs.forEach((t) => t.addEventListener("click", () => {
+      tabs.forEach((x) => x.classList.toggle("active", x === t));
+      const which = t.getAttribute("data-tab");
+      document.getElementById("tab-posts").style.display = which === "posts" ? "block" : "none";
+      document.getElementById("tab-saved").style.display = which === "saved" ? "block" : "none";
+    }));
+    const sBtn = document.getElementById("settings-toggle-btn");
+    const sPanel = document.getElementById("account-settings-panel");
+    if (sBtn && sPanel) sBtn.addEventListener("click", () => sPanel.classList.toggle("open"));
+  })();
+</script>
 </body>
 </html>
