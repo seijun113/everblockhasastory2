@@ -132,6 +132,8 @@
 
     let debounceTimer = null;
     let requestId = 0;
+    let lastProfiles = [];
+    let lastQuery = "";
 
     async function runSearch(q) {
       const myRequestId = ++requestId;
@@ -150,6 +152,8 @@
         if (myRequestId !== requestId) return; // a newer keystroke already started a fresher search
         if (!res.ok) throw new Error(data.error || "Search failed.");
         const profiles = data.profiles || [];
+        lastProfiles = profiles;
+        lastQuery = q;
         if (!profiles.length) {
           statusEl.style.display = "block";
           statusEl.textContent = "No profiles found for \"" + q + "\".";
@@ -163,6 +167,19 @@
         statusEl.textContent = "Couldn't search right now — check your connection and try again.";
       }
     }
+
+    // Enter jumps straight into the best match (exact username first, else top result).
+    input.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      clearTimeout(debounceTimer);
+      if (lastQuery !== q) await runSearch(q);
+      const exact = lastProfiles.find((p) => (p.name || "").toLowerCase() === q.toLowerCase());
+      const target = exact || lastProfiles[0];
+      if (target) window.location.href = "profile.html?id=" + encodeURIComponent(target.id);
+    });
 
     input.addEventListener("input", () => {
       clearTimeout(debounceTimer);
