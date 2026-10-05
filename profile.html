@@ -51,38 +51,49 @@
 <section id="profile-found" class="section section-dark" style="padding-top:40px; display:none;">
   <div class="container" style="max-width:900px;">
 
-    <div class="form-card" style="padding:0; overflow:hidden; max-width:none;">
-      <div id="profile-banner" style="height:120px; background:linear-gradient(120deg, var(--orange), var(--gold), var(--olive)); background-size:cover; background-position:center; position:relative;">
-        <button type="button" id="edit-banner-btn" class="btn btn-outline" style="display:none; position:absolute; right:12px; bottom:12px; padding:6px 14px; font-size:0.78rem; background:rgba(20,21,15,0.55); border-color:rgba(243,234,216,0.4);">Change Banner</button>
-        <input type="file" id="banner-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
-      </div>
-      <div style="padding:0 32px 32px;">
-        <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:-48px;">
-          <div style="display:flex; align-items:flex-end; gap:16px;">
-            <div style="position:relative;">
-              <span class="avatar" id="profile-avatar" style="width:96px; height:96px; font-size:2rem; border:4px solid var(--panel); border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; background-size:cover; background-position:center;"></span>
-              <button type="button" id="edit-avatar-btn" aria-label="Change profile photo" style="display:none; position:absolute; right:-4px; bottom:-4px; width:30px; height:30px; border-radius:50%; background:var(--orange); border:2px solid var(--panel); color:var(--ink); align-items:center; justify-content:center; cursor:pointer; padding:0;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              </button>
-              <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
-            </div>
-            <div style="padding-bottom:6px;">
-              <h1 id="profile-name" style="margin:0; font-size:1.6rem;">—</h1>
-              <p id="profile-joined" style="color:var(--cream-dim); margin:4px 0 0;"></p>
-            </div>
-          </div>
-          <div style="display:flex; gap:10px; padding-bottom:6px;">
-            <button type="button" id="share-profile-btn" class="btn btn-outline">Share Profile</button>
-            <button type="button" id="follow-btn" class="btn btn-primary">Follow</button>
-            <button type="button" id="report-profile-btn" class="btn btn-outline" style="display:none;">Report</button>
-          </div>
-        </div>
+    <style>
+      .ig-head { display:flex; gap:clamp(20px,5vw,64px); align-items:center; padding:24px 0 20px; flex-wrap:wrap; }
+      .ig-avatar-ring { position:relative; padding:4px; border-radius:50%; background:linear-gradient(45deg,var(--gold),var(--orange),#c13584); flex-shrink:0; }
+      .ig-main { flex:1; min-width:260px; }
+      .ig-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+      .ig-top h1 { margin:0; font-size:1.35rem; font-weight:600; font-family:Inter,sans-serif; }
+      .ig-stats { display:flex; gap:clamp(18px,4vw,40px); margin-bottom:14px; flex-wrap:wrap; }
+      .ig-stat { font-size:0.95rem; color:var(--cream-dim); }
+      .ig-stat b { color:var(--cream); font-weight:700; font-size:1.05rem; margin-right:4px; }
+      .ig-tabs { display:flex; justify-content:center; align-items:center; position:relative; border-top:1px solid var(--line); margin-top:8px; }
+      .ig-tab { border-top:2px solid var(--cream); margin-top:-1px; padding:14px 4px; color:var(--cream); font:600 0.78rem Inter,sans-serif; letter-spacing:0.12em; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+    </style>
+    <div id="profile-banner" style="height:140px; border-radius:14px; background:linear-gradient(120deg, var(--orange), var(--gold), var(--olive)); background-size:cover; background-position:center; position:relative;">
+      <button type="button" id="edit-banner-btn" class="btn btn-outline" style="display:none; position:absolute; right:12px; bottom:12px; padding:6px 14px; font-size:0.78rem; background:rgba(20,21,15,0.55); border-color:rgba(243,234,216,0.4);">Change Banner</button>
+      <input type="file" id="banner-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+    </div>
 
-        <div id="profile-bio-view" style="margin-top:20px;">
-          <p id="profile-bio-text" style="color:var(--cream-dim); max-width:600px; white-space:pre-wrap;"></p>
-          <button type="button" id="edit-bio-btn" class="btn btn-outline" style="display:none; padding:6px 16px; font-size:0.85rem;">Edit Bio</button>
+    <div class="ig-head">
+      <div class="ig-avatar-ring">
+        <span class="avatar" id="profile-avatar" style="width:116px; height:116px; font-size:2.6rem; border:4px solid var(--ink); border-radius:50%; background:var(--gold); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; background-size:cover; background-position:center;"></span>
+        <button type="button" id="edit-avatar-btn" aria-label="Change profile photo" style="display:none; position:absolute; right:2px; bottom:6px; width:34px; height:34px; border-radius:50%; background:var(--orange); border:3px solid var(--ink); color:var(--ink); align-items:center; justify-content:center; cursor:pointer; padding:0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+      </div>
+      <div class="ig-main">
+        <div class="ig-top">
+          <h1 id="profile-name">—</h1>
+          <button type="button" id="follow-btn" class="btn btn-primary" style="padding:7px 20px; font-size:0.82rem; font-weight:600;">Follow</button>
+          <button type="button" id="share-profile-btn" class="btn btn-outline" style="padding:7px 16px; font-size:0.82rem; font-weight:600;">Share profile</button>
+          <button type="button" id="report-profile-btn" class="btn btn-outline" style="display:none; padding:7px 16px; font-size:0.82rem;">Report</button>
         </div>
-        <div id="profile-bio-edit" style="display:none; margin-top:20px; max-width:500px;">
+        <div class="ig-stats">
+          <div class="ig-stat"><b id="profile-story-count">0</b>posts</div>
+          <div class="ig-stat"><b id="profile-follower-count">0</b>followers</div>
+          <div class="ig-stat"><b id="profile-following-count">0</b>following</div>
+          <div class="ig-stat"><b id="profile-total-views">0</b>views</div>
+        </div>
+        <div id="profile-bio-view">
+          <p id="profile-bio-text" style="color:var(--cream); max-width:520px; white-space:pre-wrap; margin:0 0 8px; font-size:0.95rem;"></p>
+          <button type="button" id="edit-bio-btn" class="btn btn-outline" style="display:none; padding:6px 16px; font-size:0.8rem;">Edit bio</button>
+        </div>
+        <div id="profile-bio-edit" style="display:none; max-width:500px;">
           <div class="field" style="margin-bottom:8px;">
             <textarea id="bio-input" maxlength="160" placeholder="Tell your story..."></textarea>
             <p class="field-hint"><span id="bio-count">0</span>/160</p>
@@ -92,44 +103,25 @@
             <button type="button" id="cancel-bio-btn" class="btn btn-outline" style="padding:8px 20px; font-size:0.85rem;">Cancel</button>
           </div>
         </div>
-
-        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
-          <div class="stat-box">
-            <div class="num" id="profile-story-count">0</div>
-            <div class="label">Stories</div>
-          </div>
-          <div class="stat-box">
-            <div class="num" id="profile-total-views">0</div>
-            <div class="label">Views</div>
-          </div>
-          <div class="stat-box">
-            <div class="num" id="profile-follower-count">0</div>
-            <div class="label">Followers</div>
-          </div>
-          <div class="stat-box">
-            <div class="num" id="profile-following-count">0</div>
-            <div class="label">Following</div>
-          </div>
-        </div>
-
-        <div id="profile-countries-wrap" style="margin-top:24px; display:none;">
-          <p style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--cream-dim); margin-bottom:10px;">Posting From</p>
+        <p id="profile-joined" style="color:var(--cream-dim); margin:10px 0 0; font-size:0.8rem;"></p>
+        <div id="profile-countries-wrap" style="margin-top:12px; display:none;">
           <div id="profile-countries" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
         </div>
       </div>
     </div>
 
-    <div style="margin-top:40px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-        <h2 style="font-size:1.4rem; margin:0;">Stories</h2>
-        <select id="story-sort" class="chip" style="cursor:pointer;">
-          <option value="newest">Newest</option>
-          <option value="liked">Most Liked</option>
-        </select>
-      </div>
-      <p id="profile-stories-empty" style="color:var(--cream-dim); display:none; margin-top:20px;">No stories posted yet.</p>
+    <div class="ig-tabs">
+      <div class="ig-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Posts</div>
+      <select id="story-sort" class="chip" style="cursor:pointer; position:absolute; right:0; top:8px;">
+        <option value="newest">Newest</option>
+        <option value="liked">Most Liked</option>
+      </select>
+    </div>
+    <div style="margin-top:4px;">
+      <p id="profile-stories-empty" style="color:var(--cream-dim); display:none; margin-top:20px; text-align:center; padding:30px 0;">No stories posted yet.</p>
       <div id="profile-stories-grid" class="story-grid" style="margin-top:20px;"></div>
     </div>
+
 
   </div>
 </section>
