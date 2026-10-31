@@ -991,9 +991,13 @@ const API = {
 function storyCardHTML(s) {
   const initials = (s.author || "?").split(" ").map((p) => p[0]).slice(0, 2).join("");
   const isBlog = s.postType === "blog";
+  const excerptSrc = (s.body || s.caption || "").replace(/\s+/g, " ").trim();
+  const excerpt = excerptSrc.length > 150 ? excerptSrc.slice(0, 150).replace(/\s+\S*$/, "") + "…" : excerptSrc;
   const media = s.thumbnailUrl
     ? `<div class="story-media-fallback" style="background-image:url('${escapeAttr(s.thumbnailUrl)}'); background-size:cover; background-position:center;"></div>`
-    : `<div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
+    : isBlog
+      ? `<div class="story-media-fallback" style="background: linear-gradient(160deg, hsl(${(String(s.id).split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360} 28% 20%), var(--ink-soft)); align-items:flex-start; justify-content:flex-start; padding:56px 20px 0;"><p style="margin:0; font-family:'Playfair Display', serif; font-size:1.02rem; line-height:1.5; color:rgba(243,234,216,0.82); font-style:italic;">“${escapeHtml(excerpt)}”</p></div>`
+      : `<div class="story-media-fallback" style="background: linear-gradient(135deg, hsl(${s.hue || 30} 45% 22%), var(--ink-soft));"></div>`;
   const badge = isBlog
     ? `<span title="Written story" style="position:absolute; top:12px; right:12px; z-index:2; padding:5px 10px; border-radius:999px; background:rgba(243,234,216,0.92); color:var(--ink); font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; display:flex; align-items:center; gap:5px;">${docIcon()} Blog</span>`
     : `<span class="play-badge">${playIcon()}</span>`;
