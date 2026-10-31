@@ -18,7 +18,7 @@ if (!SOCIAL_FEATURES_ENABLED) {
   hideStyle.textContent = [
     ".nav-search-link, #story-engagement, #story-comments-section, #report-story-btn,",
     ".feed-actions, #feed-comments-overlay, #follow-btn, #share-profile-btn, #report-profile-btn { display: none !important; }",
-    "#story-author-link { pointer-events: none; cursor: default; }"
+    "#story-author-link, .feed-author { pointer-events: none; cursor: default; text-decoration: none; }"
   ].join(" ");
   document.head.appendChild(hideStyle);
   if (/\/(profile|search)(\.html)?$/.test(window.location.pathname)) {
