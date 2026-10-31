@@ -8,6 +8,24 @@
  */
 
 // EDIT THIS: your backend's real Vercel address, e.g. "https://every-block-backend.vercel.app"
+// ---- Social features switch ----
+// Set to true to bring back profiles, search, likes/saves/shares, comments,
+// follows and reporting. While false they are hidden everywhere (the code
+// and data stay intact, nothing is deleted).
+const SOCIAL_FEATURES_ENABLED = false;
+if (!SOCIAL_FEATURES_ENABLED) {
+  const hideStyle = document.createElement("style");
+  hideStyle.textContent = [
+    ".nav-search-link, #story-engagement, #story-comments-section, #report-story-btn,",
+    ".feed-actions, #feed-comments-overlay, #follow-btn, #share-profile-btn, #report-profile-btn { display: none !important; }",
+    "#story-author-link { pointer-events: none; cursor: default; }"
+  ].join(" ");
+  document.head.appendChild(hideStyle);
+  if (/\/(profile|search)(\.html)?$/.test(window.location.pathname)) {
+    window.location.replace("stories.html");
+  }
+}
+
 const API_BASE = "https://every-block-backend.vercel.app";
 
 // Only used for Google sign-in. The anon key is meant to be public --
